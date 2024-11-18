@@ -41,8 +41,8 @@ def _listening(
         f"tcp://{config['host']}:{config['port']}//{config['command_name']}//{handler}"
     )
 
-    context = zmq.Context.instance()
-    socket = context.socket(zmq.REP)
+    context: zmq.Context = zmq.Context.instance()
+    socket: zmq.Socket = context.socket(zmq.REP)
     socket.bind(url)
     print(f"Server listening on {url}")
     try:

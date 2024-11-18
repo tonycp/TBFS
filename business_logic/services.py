@@ -12,3 +12,7 @@ def get_UserService(db_url) -> UserService:
 
 def get_TagService(db_url) -> TagService:
     return TagService(Repository[Tag](db_url))
+
+
+def get_FileSourceService(db_url) -> FileSourceService:
+    return FileSourceService(Repository[FileSource](db_url))

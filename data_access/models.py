@@ -85,6 +85,34 @@ class File(Base):
         return f"File(id={self.id!r}, name={self.name!r}, file_type={self.file_type!r}, size={self.size!r})"
 
 
+class FileSource(Base):
+    __tablename__ = "file_sources"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    file_id: Mapped[File] = mapped_column(ForeignKey("files.id"))
+    chunk_size: Mapped[int] = mapped_column(nullable=False)
+    chunk_number: Mapped[int] = mapped_column(nullable=False)
+    url: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    creation_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    )
+    update_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    )
+
+    file: Mapped[File] = relationship(
+        back_populates="sources", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        CheckConstraint("update_date >= creation_date", name="check_update_date"),
+    )
+
+    def __repr__(self) -> str:
+        return f"FileSource(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, chunk_number={self.chunk_number!r}, url={self.url!r})"
+
+
 class Tag(Base):
     __tablename__ = "tags"
 
