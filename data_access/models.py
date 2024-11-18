@@ -91,6 +91,13 @@ class Tag(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
+    creation_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    )
+    update_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    )
+
     file: Mapped[List[File]] = relationship(
         secondary=file_tags, back_populates="tag", cascade="all, delete-orphan"
     )
