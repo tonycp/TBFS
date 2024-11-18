@@ -1,0 +1,6 @@
+SQLAlchemy==1.4.39			# SQLAlchemy for ORM
+psycopg2-binary==2.9.3		# PostgreSQL adapter for SQLAlchemy
+Click==8.0.4				# Click for creating command-line interfaces
+pytest==6.2.5				# Pytest for testing
+Sphinx==4.2.0				# Sphinx for generating documentation
+pyzmq==22.3.0				# PyZMQ for ZeroMQ bindings in Python
