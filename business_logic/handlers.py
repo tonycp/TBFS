@@ -1,3 +1,4 @@
+import time
 import zmq
 import json
 from typing import Callable, Any, Dict
@@ -52,6 +53,7 @@ def _listening(
                 result = func(incoming_data, *args, **kwargs)
                 socket.send_string(json.dumps(result))
             except zmq.Again:
+                time.sleep(0.01)
                 continue  # Continue if no message is received
     except KeyboardInterrupt:
         print("Server shutting down.")
