@@ -1,10 +1,19 @@
 import zmq
 import json
-from typing import Callable, Any
+from typing import Callable, Any, Dict
+
+__all__ = ["create_decorator", "Create", "Update", "Delete", "Get", "GetAll"]
 
 
-def check_default(config: dict) -> dict:
-    """Check and set default values for the configuration."""
+def check_default(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Check and set default values for the configuration.
+
+    Args:
+        config: A dictionary containing the configuration.
+
+    Returns:
+        A dictionary with the default values set.
+    """
     default_config = {"host": "localhost", "port": 5555, "dataset": None}
     # Update config with default values if they are not provided
     for key, value in default_config.items():
@@ -13,17 +22,25 @@ def check_default(config: dict) -> dict:
 
 
 def _listening(
-    func: Callable[[Any], Any],
-    command_name: str,
-    config: dict,
+    func: Callable[[Dict[str, Any]], Any],
+    config: Dict[str, Any],
     *args: Any,
     **kwargs: Any,
-) -> Callable[[Any], Any]:
-    """Open a listening port to serve the request."""
-    handler = f"{config['dataset']}" if config["dataset"] else ""
-    url = f"tcp://{config['host']}:{config['port']}//{command_name}//{handler}"
+) -> None:
+    """Open a listening port to serve the request.
 
-    context = zmq.Context()
+    Args:
+        func: The function to call when a request is received.
+        config: A dictionary containing the configuration.
+        args: The arguments to pass to the function.
+        kwargs: The keyword arguments to pass to the function.
+    """
+    handler = f"{config['dataset']}" if config["dataset"] else ""
+    url = (
+        f"tcp://{config['host']}:{config['port']}//{config['command_name']}//{handler}"
+    )
+
+    context = zmq.Context.instance()
     socket = context.socket(zmq.REP)
     socket.bind(url)
     print(f"Server listening on {url}")
@@ -45,71 +62,56 @@ def _listening(
         context.term()
 
 
-def Create(config: dict) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
-    """Open a listening port to serve the add request."""
-    config = check_default(config)
-    name = "Create"
+def create_decorator(
+    command_name: str, dataset: Dict[str, Any]
+) -> Callable[[Callable[[Dict[str, Any]], Any]], Callable[[Dict[str, Any]], None]]:
+    """Generic decorator factory for command handlers.
 
-    def decorator(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            _listening(func, name, config, *args, **kwargs)
+    Args:
+        command_name: The name of the command.
+        dataset: The dataset to use for the command.
 
-        return wrapper
+    Returns:
+        A decorator that can be used to wrap the command handler function.
+    """
+    config = check_default({"command_name": command_name, "dataset": dataset})
 
-    return decorator
-
-
-def Update(config: dict) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
-    """Open a listening port to serve the update request."""
-    config = check_default(config)
-    name = "Update"
-
-    def decorator(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            _listening(func, name, config, *args, **kwargs)
+    def decorator(
+        func: Callable[[Dict[str, Any]], Any]
+    ) -> Callable[[Dict[str, Any]], None]:
+        def wrapper(*args: Any, **kwargs: Any) -> None:
+            _listening(func, config, *args, **kwargs)
 
         return wrapper
 
     return decorator
 
 
-def Delete(config: dict) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
-    """Open a listening port to serve the delete request."""
-    config = check_default(config)
-    name = "Delete"
-
-    def decorator(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            _listening(func, name, config, *args, **kwargs)
-
-        return wrapper
-
-    return decorator
+def Create(
+    dataset: Dict[str, Any]
+) -> Callable[[Callable[[Dict[str, Any]], Any]], Callable[[Dict[str, Any]], None]]:
+    return create_decorator("Create", dataset)
 
 
-def Get(config: dict) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
-    """Open a listening port to serve the get request."""
-    config = check_default(config)
-    name = "Get"
-
-    def decorator(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            _listening(func, name, config, *args, **kwargs)
-
-        return wrapper
-
-    return decorator
+def Update(
+    dataset: Dict[str, Any]
+) -> Callable[[Callable[[Dict[str, Any]], Any]], Callable[[Dict[str, Any]], None]]:
+    return create_decorator("Update", dataset)
 
 
-def GetAll(config: dict) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
-    """Open a listening port to serve the get all request."""
-    config = check_default(config)
-    name = "GetAll"
+def Delete(
+    dataset: Dict[str, Any]
+) -> Callable[[Callable[[Dict[str, Any]], Any]], Callable[[Dict[str, Any]], None]]:
+    return create_decorator("Delete", dataset)
 
-    def decorator(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            _listening(func, name, config, *args, **kwargs)
 
-        return wrapper
+def Get(
+    dataset: Dict[str, Any]
+) -> Callable[[Callable[[Dict[str, Any]], Any]], Callable[[Dict[str, Any]], None]]:
+    return create_decorator("Get", dataset)
 
-    return decorator
+
+def GetAll(
+    dataset: Dict[str, Any]
+) -> Callable[[Callable[[Dict[str, Any]], Any]], Callable[[Dict[str, Any]], None]]:
+    return create_decorator("GetAll", dataset)
