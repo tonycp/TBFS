@@ -2,7 +2,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker, scoped_session, Session as SessionType, Query
 from typing import TypeVar, Generic, Type, List
-from models import Base
+from .models import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
 
