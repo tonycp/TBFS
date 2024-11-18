@@ -1,77 +1,99 @@
+from __future__ import annotations
+
+from typing import List
 from sqlalchemy import (
     Column,
-    Integer,
     String,
     ForeignKey,
-    Table,
     DateTime,
-    Boolean,
+    Table,
     UniqueConstraint,
     CheckConstraint,
 )
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 import datetime
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 file_tags = Table(
     "file_tags",
     Base.metadata,
-    Column("file_id", Integer, ForeignKey("files.id"), primary_key=True),
-    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+    Column("file_id", ForeignKey("files.id")),
+    Column("tag_id", ForeignKey("tags.id")),
 )
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False)
-    is_connected = Column(Boolean, default=False, nullable=False)
-    creation_date = Column(
-        DateTime, default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(30), nullable=False)
+    is_connected: Mapped[bool] = mapped_column(default=False, nullable=False)
+    creation_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
     )
-    update_date = Column(
-        DateTime, default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    update_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
     )
 
-    files = relationship("File", back_populates="user")
+    files: Mapped[List[File]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint("update_date >= creation_date", name="check_update_date"),
     )
 
+    def __repr__(self) -> str:
+        return f"User(id={self.id!r}, name={self.name!r}, is_connected={self.is_connected!r})"
+
 
 class File(Base):
     __tablename__ = "files"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
-    file_type = Column(String(50), nullable=False)
-    size = Column(Integer, nullable=False)
-    creation_date = Column(
-        DateTime, default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    size: Mapped[int] = mapped_column(nullable=False)
+
+    creation_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
     )
-    update_date = Column(
-        DateTime, default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    update_date: Mapped[DateTime] = mapped_column(
+        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
     )
 
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
-    user = relationship("User", back_populates="files")
-    tags = relationship("Tag", secondary=file_tags, back_populates="files")
+    user: Mapped[User] = relationship(
+        back_populates="files", cascade="all, delete-orphan"
+    )
+
+    tags: Mapped[List[Tag]] = relationship(
+        secondary=file_tags, back_populates="file", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         UniqueConstraint("name", "file_type", "user_id", name="uq_name_type_by_user"),
         CheckConstraint("update_date >= creation_date", name="check_update_date"),
     )
 
+    def __repr__(self) -> str:
+        return f"File(id={self.id!r}, name={self.name!r}, file_type={self.file_type!r}, size={self.size!r})"
+
 
 class Tag(Base):
     __tablename__ = "tags"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50), unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
-    files = relationship("File", secondary=file_tags, back_populates="tags")
+    file: Mapped[List[File]] = relationship(
+        secondary=file_tags, back_populates="tag", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"Tag(id={self.id!r}, name={self.name!r})"
