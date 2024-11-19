@@ -97,6 +97,7 @@ TBFS/
 │   ├── __init__.py                 # Indicates that this directory is a Python package
 │   ├── business_data.py            # Implementation of core business logic, such as rules and processes
 │   ├── controllers.py              # Controllers that manage interactions between UI and business logic
+│   ├── core.py                     # Implementation of the core business logic
 │   ├── handlers.py                 # Handlers to process events and specific actions within the business logic
 │   └── services.py                 # Additional services and utilities that can be used across the business layer
 │
