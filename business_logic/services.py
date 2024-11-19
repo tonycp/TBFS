@@ -3,16 +3,16 @@ from .business_data import *
 
 
 def get_FileService(db_url) -> FileService:
-    return FileService(Repository[File](db_url))
+    return FileService(get_repository(File, db_url))
 
 
 def get_UserService(db_url) -> UserService:
-    return UserService(Repository[User](db_url))
+    return UserService(get_repository(User, db_url))
 
 
 def get_TagService(db_url) -> TagService:
-    return TagService(Repository[Tag](db_url))
+    return TagService(get_repository(Tag, db_url))
 
 
 def get_FileSourceService(db_url) -> FileSourceService:
-    return FileSourceService(Repository[FileSource](db_url))
+    return FileSourceService(get_repository(FileSource, db_url))

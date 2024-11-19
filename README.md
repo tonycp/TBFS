@@ -74,30 +74,46 @@ Para instalar el proyecto, sigue estos pasos:
 ``` bash
 TBFS/
 │
-├── app/                # Presentation layer
-│   ├── __init__.py     # Indicates that this directory is a package
-│   ├── main.py         # Main entry point of the application
-│   └── ui_logic.py     # User interface logic and interactions
+├── app/                            # Presentation layer
+│   ├── __init__.py                 # Indicates that this directory is a Python package
+│   ├── main.py                     # Main entry point of the application; starts execution
+│   └── ui_logic.py                 # User interface logic and handling interactions
 │
-├── business_logic/     # Business logic layer
-│   ├── __init__.py     # Indicates that this directory is a package
-│   ├── core.py         # Implementation of the core business logic
-│   └── services.py     # Additional services and utilities
+├── business_logic/                 # Business logic layer
+│   ├── dtos/                       # Data Transfer Objects (DTOs) to structure data between layers
+│   │   ├─ __init__.py              # Indicates that this directory is a Python package
+│   │   ├─ FileInputDto.py          # Definition of the DTO for file input
+│   │   ├─ FileSourceInputDto.py    # Definition of the DTO for file source input
+│   │   ├─ TagInputDto.py           # Definition of the DTO for tag input
+│   │   └─ UserInputDto.py          # Definition of the DTO for user input
+│   │
+│   ├── services/                   # Services that encapsulate business logic
+│   │   ├─ __init__.py              # Indicates that this directory is a Python package
+│   │   ├─ FileService.py           # Service to handle operations related to files
+│   │   ├─ FileSourceService.py     # Service to handle operations related to file sources
+│   │   ├─ TagService.py            # Service to handle operations related to tags
+│   │   └─ UserService.py           # Service to handle operations related to users
+│   │
+│   ├── __init__.py                 # Indicates that this directory is a Python package
+│   ├── business_data.py            # Implementation of core business logic, such as rules and processes
+│   ├── controllers.py              # Controllers that manage interactions between UI and business logic
+│   ├── handlers.py                 # Handlers to process events and specific actions within the business logic
+│   └── services.py                 # Additional services and utilities that can be used across the business layer
 │
-├── data_access/        # Data access layer
-│   ├── __init__.py     # Indicates that this directory is a package
-│   ├── models.py       # SQLAlchemy model definitions
-│   └── repository.py   # Data repository for database interactions
+├── data_access/                    # Data access layer
+│   ├── __init__.py                 # Indicates that this directory is a Python package
+│   ├── models.py                   # SQLAlchemy model definitions representing database tables
+│   └── repository.py               # Repository that handles interactions with the database
 │
-├── tests/              # Unit and integration tests
-│   ├── __init__.py     # Indicates that this directory is a package
-│   ├── test_app.py     # Tests for the presentation layer
-│   ├── test_core.py    # Tests for the business logic layer
-│   └── test_data.py    # Tests for the data access layer
+├── tests/                          # Unit and integration tests for the system
+│   ├── __init__.py                 # Indicates that this directory is a Python package
+│   ├── test_app.py                 # Tests for the presentation layer; ensures UI functions correctly
+│   ├── test_core.py                # Tests for the business logic; verifies rules and processes execute as expected 
+│   └── test_data.py                # Tests for the data access layer; ensures database interactions are correct 
 │
-├── docker-compose.yml  # File to define and run containers
-├── Dockerfile          # File to define the Docker image
-├── LICENSE             # File to define the MIT license
-├── README.md           # Project documentation
-└── requirements.txt    # Application dependencies
+├── docker-compose.yml              # File to define and run Docker containers; simplifies deployment of the environment 
+├── Dockerfile                      # File to define how to build the Docker image for the project 
+├── LICENSE                         # File that defines the MIT license under which the project is distributed 
+├── README.md                       # Project documentation; includes information on installation, usage, and contributions 
+└── requirements.txt                # Dependencies needed to run the project; specifies required packages 
 ```
