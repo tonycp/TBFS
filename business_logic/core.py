@@ -1,7 +1,5 @@
-import time
-import zmq
-import json
 from typing import Callable, Any, Dict, List, Optional, Union
+import time, zmq, json, logging
 from .handlers import handlers
 
 _socket_config: Dict[str, Optional[Union[str, int]]] = {
@@ -56,7 +54,9 @@ def _load_data(data: List[bytes], dataset: Dict[str, Any]) -> Dict[str, Any]:
 
 def start_listening() -> None:
     """Open a listening port to serve the request."""
+
     config = _check_default(_socket_config)
+    logging.info("checked config")
 
     context: zmq.Context = zmq.Context.instance()
     socket: zmq.Socket = context.socket(zmq.REP)
@@ -64,32 +64,45 @@ def start_listening() -> None:
     url = f"{config['protocol']}://{config['host']}:{config['port']}"
 
     socket.bind(url)
-    print(f"Server listening on {url}")
+    logging.info(f"Binding socket on {url}")
 
     poller: zmq.Poller = zmq.Poller()
     poller.register(socket, zmq.POLLIN)
-
+    logging.info("Starting listening...")
     try:
         while True:
             socks: Dict[zmq.Socket, int] = dict(poller.poll())
             if socket in socks and socks[socket] == zmq.POLLIN:
                 try:
                     message = socket.recv_multipart(flags=zmq.NOBLOCK)
+
+                    last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT)
+                    logging.info(f"Received a message from: {last_endpoint}")
+
                     handler_func, dataset = _load_handler(message[0].decode("utf-8"))
+                    logging.info(f"Redirecting to handler: {handler_func.__name__}")
+
                     incoming_data = _load_data(message[1:], dataset)
+                    logging.info(f"checked incoming data: {dataset}")
+
                     result = handler_func(incoming_data)
+                    logging.info(f"Result: {result}")
+
                     socket.send_multipart([json.dumps(result).encode("utf-8")])
+                    logging.info(f"Response sent to: {last_endpoint}")
                 except ValueError as e:
-                    print(f"Error processing message: {e}")
+                    logging.error(f"Error processing message: {e}")
+
                     socket.send_multipart(
                         [json.dumps({"error": str(e)}).encode("utf-8")]
                     )
+                    logging.info(f"Error sent to: {last_endpoint}")
                 except zmq.Again:
                     continue
             time.sleep(0.01)
 
     except KeyboardInterrupt:
-        print("Server shutting down.")
+        logging.info("Server shutting down.")
 
     finally:
         socket.close()
