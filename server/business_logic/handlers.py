@@ -1,7 +1,7 @@
 import json
 from typing import Callable, Any, Dict, Optional
 
-handlers = {} # Dict[str, (Callable[[Dict[str, Any]], Any], Dict[str, Any])]
+handlers = {}  # Dict[str, (Callable[[Dict[str, Any]], Any], Dict[str, Any])]
 
 
 def create_decorator(
