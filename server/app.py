@@ -1,7 +1,5 @@
-import logging.handlers
-import logging, os
+import os, logging, logging.handlers as handlers
 from dotenv import load_dotenv
-from datetime import datetime
 from business_logic import start_listening, set_config
 
 logging.basicConfig(
@@ -9,7 +7,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.handlers.TimedRotatingFileHandler(
+        handlers.TimedRotatingFileHandler(
             filename="logs\\app.log", when="M", interval=10
         ),
     ],
