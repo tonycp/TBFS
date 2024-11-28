@@ -5,13 +5,12 @@ from sqlalchemy import (
     Column,
     String,
     ForeignKey,
-    DateTime,
     Table,
     UniqueConstraint,
     CheckConstraint,
 )
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
-import datetime
+from datetime import datetime, timezone
 
 
 class Base(DeclarativeBase):
@@ -32,11 +31,11 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(30), nullable=False)
     is_connected: Mapped[bool] = mapped_column(default=False, nullable=False)
-    creation_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    creation_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
-    update_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    update_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
 
     files: Mapped[List[File]] = relationship(
@@ -59,11 +58,11 @@ class File(Base):
     file_type: Mapped[str] = mapped_column(String(50), nullable=False)
     size: Mapped[int] = mapped_column(nullable=False)
 
-    creation_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    creation_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
-    update_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    update_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
@@ -94,11 +93,11 @@ class FileSource(Base):
     chunk_number: Mapped[int] = mapped_column(nullable=False)
     url: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    creation_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    creation_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
-    update_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    update_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
 
     file: Mapped[File] = relationship(
@@ -119,11 +118,11 @@ class Tag(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
-    creation_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    creation_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
-    update_date: Mapped[DateTime] = mapped_column(
-        default=datetime.datetime.now(datetime.timezone.utc), nullable=False
+    update_date: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc), nullable=False
     )
 
     file: Mapped[List[File]] = relationship(

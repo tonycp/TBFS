@@ -1,18 +1,22 @@
+import logging.handlers
 import logging, os
 from dotenv import load_dotenv
-from ..business_logic import start_listening, set_config
+from datetime import datetime
+from business_logic import start_listening, set_config
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("app.log"),
         logging.StreamHandler(),
+        logging.handlers.TimedRotatingFileHandler(
+            filename="logs\\app.log", when="M", interval=10
+        ),
     ],
 )
 
 
-def main():
+if __name__ == "__main__":
     load_dotenv()
     set_config(
         config={

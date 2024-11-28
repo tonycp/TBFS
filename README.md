@@ -74,11 +74,6 @@ Para instalar el proyecto, sigue estos pasos:
 ``` bash
 TBFS/
 │
-├── app/                            # Presentation layer
-│   ├── __init__.py                 # Indicates that this directory is a Python package
-│   ├── main.py                     # Main entry point of the application; starts execution
-│   └── ui_logic.py                 # User interface logic and handling interactions
-│
 ├── business_logic/                 # Business logic layer
 │   ├── dtos/                       # Data Transfer Objects (DTOs) to structure data between layers
 │   │   ├─ __init__.py              # Indicates that this directory is a Python package
@@ -112,6 +107,7 @@ TBFS/
 │   ├── test_core.py                # Tests for the business logic; verifies rules and processes execute as expected 
 │   └── test_data.py                # Tests for the data access layer; ensures database interactions are correct 
 │
+├── app.py                          # Main entry point of the application; starts execution
 ├── docker-compose.yml              # File to define and run Docker containers; simplifies deployment of the environment 
 ├── Dockerfile                      # File to define how to build the Docker image for the project 
 ├── LICENSE                         # File that defines the MIT license under which the project is distributed 

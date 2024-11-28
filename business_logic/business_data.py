@@ -1,5 +1,5 @@
 from datetime import datetime
-from ..data_access import *
+from data_access import *
 
 FileInputTypes = {
     "name": str,
