@@ -5,26 +5,11 @@ __all__ = ["FileClient"]
 
 _commands = {
     # Create, Update, Delete, Get, GetAll
-    "add": {
-        "command_name": "Create",
-        "dataset": {"files": list, "tag_list": list},
-    },
-    "delete": {
-        "command_name": "Delete",
-        "dataset": {"tag_query": str},
-    },
-    "list": {
-        "command_name": "GetAll",
-        "dataset": {"tag_query": str},
-    },
-    "add_tags": {
-        "command_name": "Create",
-        "dataset": {"tag_query": str, "tag_list": list},
-    },
-    "delete_tags": {
-        "command_name": "Delete",
-        "dataset": {"tag_query": str, "tag_list": list},
-    },
+    "add": {"command_name": "Create"},
+    "delete": {"command_name": "Delete"},
+    "list": {"command_name": "GetAll"},
+    "add_tags": {"command_name": "Create"},
+    "delete_tags": {"command_name": "Delete"},
 }
 
 
@@ -44,7 +29,7 @@ class FileClient:
         if command not in _commands:
             raise ValueError(f"Unknown command: {command}")
 
-        command_message = _commands[command]["command_name"].encode("utf-8")
+        command_message = json.dumps(_commands[command]).encode("utf-8")
 
         self.socket.send_multipart([command_message, message])
         response = self.socket.recv_multipart()

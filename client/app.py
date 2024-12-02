@@ -2,7 +2,7 @@ import logging, logging.handlers as handlers
 import os
 from dotenv import load_dotenv
 from business_logic.commands import cli, set_client
-from client.business_logic.clients import FileClient
+from business_logic.clients import FileClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,8 +18,15 @@ logging.basicConfig(
 
 if __name__ == "__main__":
     load_dotenv()
+    
+    config={
+            "protocol": os.getenv("PROTOCOL", "tcp"),
+            "host": os.getenv("HOST", "localhost"),
+            "port": int(os.getenv("PORT", 5555)),
+        }
+    
     set_client(
-        FileClient(f"{os.getenv("PROTOCOL", "tcp")}://{os.getenv("HOST", "localhost")}:{int(os.getenv("PORT", 5555))}")
+        FileClient(f"{config['protocol']}://{config['host']}:{config['port']}")
     )
     try:
         cli()
