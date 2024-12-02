@@ -1,4 +1,5 @@
-import click, logging
+import click
+import logging
 from typing import List
 from .clients import FileClient
 
@@ -24,7 +25,7 @@ def _send_data(command: str, **kwargs) -> None:
 
 @click.group()
 def cli() -> None:
-    """Cliente para gestionar archivos y etiquetas en el sistema de ficheros distribuido."""
+    """Client for managing files and tags in the distributed file system."""
     pass
 
 
@@ -34,18 +35,25 @@ def cli() -> None:
     "-f",
     multiple=True,
     required=True,
-    help="Lista de archivos a agregar.",
+    help="List of files to add.",
 )
 @click.option(
     "--tags",
     "-t",
     multiple=True,
     required=True,
-    help="Lista de etiquetas para los archivos.",
+    help="List of tags for the files.",
 )
 def add(files: List[str], tags: List[str]) -> None:
-    """Copia uno o más ficheros hacia el sistema y los inscribe con las etiquetas contenidas en TAG_LIST."""
-    _send_data("add", files=files, tag_list=tags)
+    """Copy one or more files to the system and register them with the tags contained in TAG_LIST."""
+    for file in files:
+        try:
+            logging.info(f"Processing file {file}")
+            with open(file, "rb") as f:
+                file_data = f.read()
+                _send_data("add", files=[file_data], tags=tags)
+        except Exception as e:
+            logging.error(f"Error processing file {file}: {e}")
 
 
 @cli.command()
@@ -54,10 +62,10 @@ def add(files: List[str], tags: List[str]) -> None:
     "-q",
     type=str,
     required=True,
-    help="Consulta de etiquetas para eliminar archivos.",
+    help="Tag query to delete files.",
 )
 def delete(tag_query: str) -> None:
-    """Elimina todos los ficheros que cumplan con la consulta TAG_QUERY."""
+    """Delete all files that match the TAG_QUERY."""
     _send_data("delete", tag_query=tag_query)
 
 
@@ -67,10 +75,10 @@ def delete(tag_query: str) -> None:
     "-q",
     type=str,
     required=False,
-    help="Consulta de etiquetas para listar archivos.",
+    help="Tag query to list files.",
 )
 def list(tag_query: str) -> None:
-    """Lista el nombre y las etiquetas de todos los ficheros que cumplan con la consulta TAG_QUERY."""
+    """List the name and tags of all files that match the TAG_QUERY."""
     _send_data("list", tag_query=tag_query)
 
 
@@ -80,18 +88,18 @@ def list(tag_query: str) -> None:
     "-q",
     type=str,
     required=True,
-    help="Consulta de etiquetas para añadir nuevas.",
+    help="Tag query to add new tags.",
 )
 @click.option(
     "--tags",
     "-t",
     multiple=True,
     required=True,
-    help="Etiquetas a añadir a los archivos.",
+    help="Tags to add to the files.",
 )
 def add_tags(tag_query: str, tags: List[str]) -> None:
-    """Añade las etiquetas contenidas en TAG_LIST a todos los ficheros que cumplan con la consulta TAG_QUERY."""
-    _send_data("add_tags", tag_query=tag_query, tag_list=tags)
+    """Add the tags contained in TAG_LIST to all files that match the TAG_QUERY."""
+    _send_data("add_tags", tag_query=tag_query, tags=tags)
 
 
 @cli.command()
@@ -100,15 +108,15 @@ def add_tags(tag_query: str, tags: List[str]) -> None:
     "-q",
     type=str,
     required=True,
-    help="Consulta de etiquetas para eliminar.",
+    help="Tag query to delete.",
 )
 @click.option(
     "--tags",
     "-t",
     multiple=True,
     required=True,
-    help="Etiquetas a eliminar de los archivos.",
+    help="Tags to remove from the files.",
 )
 def delete_tags(tag_query: str, tags: List[str]) -> None:
-    """Elimina las etiquetas contenidas en TAG_LIST de todos los ficheros que cumplan con la consulta TAG_QUERY."""
-    _send_data("delete_tags", tag_query=tag_query, tag_list=tags)
+    """Delete the tags contained in TAG_LIST from all files that match the TAG_QUERY."""
+    _send_data("delete_tags", tag_query=tag_query, tags=tags)
