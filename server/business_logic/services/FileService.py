@@ -16,6 +16,10 @@ class FileService:
         """Get a file by its ID."""
         return self.repository.get(file_id)
 
+    def get_file_by_name(self, name: str):
+        """Get a file by its name."""
+        return self.repository.get_query().filter_by(name=name).first()
+
     def get_files_by_name(self, name: str):
         """Get files by name."""
         return self.repository.get_query().filter_by(name=name).all()

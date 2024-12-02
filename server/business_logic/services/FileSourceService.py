@@ -21,13 +21,10 @@ class FileSourceService:
             .filter_by(file_id=file_id)
             .all()
         )
-    
+
     def get_file_sources_by_tag_id(self, tag_id: int) -> list[FileSource]:
         return (
-            self.repository.get_query()
-            .join(file_tags)
-            .filter_by(tag_id=tag_id)
-            .all()
+            self.repository.get_query().join(file_tags).filter_by(tag_id=tag_id).all()
         )
 
     def create_file_source(self, file_source: FileSourceDto) -> FileSource:
