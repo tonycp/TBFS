@@ -1,16 +1,16 @@
 FROM python:3.11
 
-# Set working directory
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copy requirements file
+# Copia el archivo de requisitos
 COPY requirements.txt .
 
-# Install dependencies
+# Instala las dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of your application code
+# Copia el resto del código de tu aplicación
 COPY . .
 
-# Command to run your application (adjust as necessary)
-CMD ["python", "app.py"]
+# Comando por defecto para iniciar una consola bash
+CMD ["/bin/bash"]
