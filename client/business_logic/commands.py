@@ -14,10 +14,10 @@ def set_client(client: FileClient = FileClient("tcp://localhost:5555")) -> None:
     _client = client
 
 
-def _send_data(command: str, **kwargs) -> None:
+def _send_data(command: str, content = None, **kwargs) -> None:
     """Send a message to the default client."""
     try:
-        response = _client.send_multipart_message(command, kwargs)
+        response = _client.send_multipart_message(command, content, kwargs)
         logging.info(response)
     except Exception as e:
         logging.error(e)
@@ -43,9 +43,10 @@ def add(files: List[str], tags: List[str]) -> None:
     for file in files:
         try:
             logging.info(f"Processing file {file}")
-            with open(file, "rb") as f:
-                file_data = f.read()
-                _send_data("add", file=file_data, tags=tags)
+            file_data = _client.get_file_info(file)
+            file_data["content"] = True
+            content = open(file, "rb").read()
+            _send_data("add", content=content, file=file_data, tags=tags)
         except Exception as e:
             logging.error(f"Error processing file {file}: {e}")
 
@@ -62,6 +63,7 @@ def delete(tag_query: List[str]) -> None:
 def list(tag_query: List[str]) -> None:
     """List the name and tags of all files that match the TAG_QUERY."""
     _send_data("list", tag_query=tag_query)
+
 
 @cli.command()
 @click.option(

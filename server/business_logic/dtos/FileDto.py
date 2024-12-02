@@ -25,6 +25,7 @@ class FileDto:
         user_id: int,
         creation_date: datetime,
         update_date: datetime,
+        content: bytes,
     ) -> None:
         self.name = name
         self.file_type = file_type
@@ -32,6 +33,7 @@ class FileDto:
         self.user_id = user_id
         self.creation_date = creation_date
         self.update_date = update_date
+        self.content = content
 
     def __repr__(self) -> str:
         return f"FileInputDto(name={self.name!r}, file_type={self.file_type!r}, size={self.size!r}, user_id={self.user_id!r})"

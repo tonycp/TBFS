@@ -1,5 +1,7 @@
-import zmq, json
+import zmq, json, os
 from typing import Optional
+from datetime import datetime, timezone
+
 
 __all__ = ["FileClient"]
 
@@ -40,8 +42,33 @@ class FileClient:
         self.socket = self.context.socket(zmq.REQ)
         self.socket.connect(self.server_url)
 
+    def get_file_info(self, file_path: str, user_id: int = 1) -> dict:
+        """Get file information."""
+        if not os.path.isfile(file_path):
+            raise ValueError(f"File not found: {file_path}")
+
+        name = os.path.basename(file_path)
+        creation_time = os.path.getctime(file_path)
+        update_time = os.path.getmtime(file_path)
+
+        file_info = {
+            "name": os.path.splitext(name)[0],
+            "file_type": os.path.splitext(name)[1][1:],
+            "size": os.path.getsize(file_path),
+            "user_id": user_id,
+            "creation_date": datetime.fromtimestamp(
+                creation_time, tz=timezone.utc
+            ).strftime("%Y-%m-%d %H:%M:%S"),
+            "update_date": datetime.fromtimestamp(
+                update_time, tz=timezone.utc
+            ).strftime("%Y-%m-%d %H:%M:%S"),
+            "content": False,
+        }
+
+        return file_info
+
     def send_multipart_message(
-        self, command: str, data: dict[str, Optional[str]]
+        self, command: str, content, data: dict[str, Optional[str]]
     ) -> str:
         """Send a multipart message to the server."""
         message = json.dumps(data).encode("utf-8")
@@ -52,6 +79,11 @@ class FileClient:
         header = _commands[command]
         command_message = json.dumps(header).encode("utf-8")
 
-        self.socket.send_multipart([command_message, message])
+        parts = [command_message, message]
+
+        if content is not None:
+            parts.append(content)
+
+        self.socket.send_multipart(parts)
         response = self.socket.recv_multipart()
         return response[0].decode("utf-8")
