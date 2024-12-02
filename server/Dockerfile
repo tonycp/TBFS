@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11
 
 # Set working directory
 WORKDIR /app
@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Command to run your application (adjust as necessary)
-CMD ["python", "your_script.py"]
+CMD ["python", "app.py"]

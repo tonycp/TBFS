@@ -1,6 +1,8 @@
 import logging, logging.handlers as handlers
+import os
 from dotenv import load_dotenv
-from business_logic.commands import cli
+from business_logic.commands import cli, set_client
+from client.business_logic.clients import FileClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,16 +16,14 @@ logging.basicConfig(
 )
 
 
-def main():
+if __name__ == "__main__":
     load_dotenv()
-
-    logging.info("Starting the client...")
-
+    set_client(
+        FileClient(f"{os.getenv("PROTOCOL", "tcp")}://{os.getenv("HOST", "localhost")}:{int(os.getenv("PORT", 5555))}")
+    )
     try:
         cli()
     except KeyboardInterrupt as e:
         logging.info("KeyboardInterrupt")
     except Exception as e:
         logging.error(e)
-
-    logging.info("Closing the client...")

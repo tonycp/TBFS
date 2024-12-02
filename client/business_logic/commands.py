@@ -4,10 +4,10 @@ from .clients import FileClient
 
 __all__ = ["add", "delete", "list", "add_tags", "delete_tags"]
 
-_client = FileClient()
+_client = FileClient('tcp://localhost:5555')
 
 
-def set_client(client: FileClient = FileClient()) -> None:
+def set_client(client: FileClient = FileClient('tcp://localhost:5555')) -> None:
     """Set the default client to send messages to."""
     global _client
     _client = client
