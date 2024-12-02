@@ -54,4 +54,4 @@ class FileClient:
 
         self.socket.send_multipart([command_message, message])
         response = self.socket.recv_multipart()
-        return response[1].decode("utf-8")
+        return response[0].decode("utf-8")

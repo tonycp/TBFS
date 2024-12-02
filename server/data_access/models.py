@@ -20,8 +20,8 @@ class Base(DeclarativeBase):
 file_tags = Table(
     "file_tags",
     Base.metadata,
-    Column("file_id", ForeignKey("files.id")),
-    Column("tag_id", ForeignKey("tags.id")),
+    Column("file_id", ForeignKey("files.id"), primary_key=True),
+    Column("tag_id", ForeignKey("tags.id"), primary_key=True),
 )
 
 
@@ -39,7 +39,8 @@ class User(Base):
     )
 
     files: Mapped[List[File]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (
@@ -68,11 +69,20 @@ class File(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     user: Mapped[User] = relationship(
-        back_populates="files", cascade="one, delete-orphan"
+        back_populates="files",
+        cascade="all, delete-orphan",
+        single_parent=True,
     )
 
     tags: Mapped[List[Tag]] = relationship(
-        secondary=file_tags, back_populates="file", cascade="all, delete-orphan"
+        secondary=file_tags,
+        back_populates="files",
+    )
+
+    sources: Mapped[List[FileSource]] = relationship(
+        back_populates="file",
+        cascade="all, delete-orphan",
+        single_parent=True,
     )
 
     __table_args__ = (
@@ -88,7 +98,7 @@ class FileSource(Base):
     __tablename__ = "file_sources"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    file_id: Mapped[File] = mapped_column(ForeignKey("files.id"))
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id"))
     chunk_size: Mapped[int] = mapped_column(nullable=False)
     chunk_number: Mapped[int] = mapped_column(nullable=False)
     url: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -101,7 +111,9 @@ class FileSource(Base):
     )
 
     file: Mapped[File] = relationship(
-        back_populates="sources", cascade="one, delete-orphan"
+        back_populates="sources",
+        cascade="all, delete-orphan",
+        single_parent=True,
     )
 
     __table_args__ = (
@@ -126,7 +138,8 @@ class Tag(Base):
     )
 
     files: Mapped[List[File]] = relationship(
-        secondary=file_tags, back_populates="tag", cascade="all, delete-orphan"
+        secondary=file_tags,
+        back_populates="tags",
     )
 
     def __repr__(self) -> str:
