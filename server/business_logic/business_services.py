@@ -34,11 +34,8 @@ class ServerService:
         return [tag.id for tag in self.Tags.get_tags_by_names(names)]
 
     def _add_tags(self, file_id: int, tag_list: List[str]):
-        for tag in tag_list:
-            tag_id = self.Tags.get_tag_by_name(tag)
-            if tag_id is None:
-                tag_id = self.Tags.create_tag(TagDto(name=tag))
-            file_tags.insert().values(file_id=file_id, tag_id=tag_id)
+        tag_ids = [tag.id for tag in self.Tags.get_tags_by_names(tag_list)]
+        self.Files.add_tags_to_file(file_id, tag_ids)
 
     def add_tags(self, tag_query: List[str], tag_list: List[str]) -> None:
         files = self.Files.get_files_by_tags(tag_query)

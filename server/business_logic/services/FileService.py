@@ -63,6 +63,25 @@ class FileService:
             .first()
         )
 
+    def add_tags_to_file(self, file_id: int, tag_ids: list[int]):
+        """Add tags to a file by its ID."""
+        file: File = self.repository.get(file_id)
+        if file is None:
+            return False
+        try:
+            with self.repository.get_session() as session:
+                for tag_id in tag_ids:
+                    if list(session.execute(file_tags.select().filter_by(file_id=file_id, tag_id=tag_id))) != []:
+                        continue
+                    session.execute(
+                        file_tags.insert().values(file_id=file_id, tag_id=tag_id)
+                    )
+                session.commit()
+        except Exception as e:
+            session.rollback()
+            return False
+        return True
+
     def create_file(self, file_input: FileDto):
         """Create a new file with the given name."""
         new_file = File(

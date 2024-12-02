@@ -22,7 +22,9 @@ class TagService:
 
     def get_tags_by_names(self, names: list[str]):
         """Get tags by names."""
-        return self.repository.get_query().filter_by(name=",".join(names)).all()
+        if names == []:
+            return self.get_all_tags()
+        return [self.get_tag_by_name(name) for name in names]
 
     def get_tags_by_file_id(self, file_id: int):
         """Get tags by file ID."""
