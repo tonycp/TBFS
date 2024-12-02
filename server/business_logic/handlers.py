@@ -13,7 +13,7 @@ def create_decorator(
     def decorator(
         func: Callable[[Dict[str, Any], Any], Any]
     ) -> Callable[[Dict[str, Any], Any], None]:
-        index = f"{command_name}//{json.dumps(dataset)}"
+        index = f"{command_name}//{func.__name__}//{json.dumps(dataset)}"
         handlers[index] = (func, dataset)
         return func
 

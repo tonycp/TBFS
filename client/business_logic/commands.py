@@ -37,13 +37,7 @@ def cli() -> None:
     required=True,
     help="List of files to add.",
 )
-@click.option(
-    "--tags",
-    "-t",
-    multiple=True,
-    required=True,
-    help="List of tags for the files.",
-)
+@click.argument("tags", nargs=-1, type=str)
 def add(files: List[str], tags: List[str]) -> None:
     """Copy one or more files to the system and register them with the tags contained in TAG_LIST."""
     for file in files:
@@ -51,36 +45,23 @@ def add(files: List[str], tags: List[str]) -> None:
             logging.info(f"Processing file {file}")
             with open(file, "rb") as f:
                 file_data = f.read()
-                _send_data("add", files=[file_data], tags=tags)
+                _send_data("add", file=file_data, tags=tags)
         except Exception as e:
             logging.error(f"Error processing file {file}: {e}")
 
 
 @cli.command()
-@click.option(
-    "--tag-query",
-    "-q",
-    type=str,
-    required=True,
-    help="Tag query to delete files.",
-)
-def delete(tag_query: str) -> None:
+@click.argument("tag_query", nargs=-1, type=str)
+def delete(tag_query: List[str]) -> None:
     """Delete all files that match the TAG_QUERY."""
     _send_data("delete", tag_query=tag_query)
 
 
 @cli.command()
-@click.option(
-    "--tag-query",
-    "-q",
-    type=str,
-    required=False,
-    help="Tag query to list files.",
-)
-def list(tag_query: str) -> None:
+@click.argument("tag_query", nargs=-1, type=str)
+def list(tag_query: List[str]) -> None:
     """List the name and tags of all files that match the TAG_QUERY."""
     _send_data("list", tag_query=tag_query)
-
 
 @cli.command()
 @click.option(
@@ -90,13 +71,7 @@ def list(tag_query: str) -> None:
     required=True,
     help="Tag query to add new tags.",
 )
-@click.option(
-    "--tags",
-    "-t",
-    multiple=True,
-    required=True,
-    help="Tags to add to the files.",
-)
+@click.argument("tags", nargs=-1, type=str)
 def add_tags(tag_query: str, tags: List[str]) -> None:
     """Add the tags contained in TAG_LIST to all files that match the TAG_QUERY."""
     _send_data("add_tags", tag_query=tag_query, tags=tags)
@@ -110,13 +85,7 @@ def add_tags(tag_query: str, tags: List[str]) -> None:
     required=True,
     help="Tag query to delete.",
 )
-@click.option(
-    "--tags",
-    "-t",
-    multiple=True,
-    required=True,
-    help="Tags to remove from the files.",
-)
+@click.argument("tags", nargs=-1, type=str)
 def delete_tags(tag_query: str, tags: List[str]) -> None:
     """Delete the tags contained in TAG_LIST from all files that match the TAG_QUERY."""
     _send_data("delete_tags", tag_query=tag_query, tags=tags)
