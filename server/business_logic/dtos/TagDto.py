@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
 
-__all__ = ["TagInputDto"]
+__all__ = ["TagDto"]
 
 
-class TagInputDto:
+class TagDto:
     def __init__(
         self, name: str, creation_date: datetime, update_date: datetime
     ) -> None:

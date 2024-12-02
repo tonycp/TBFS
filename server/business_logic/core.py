@@ -1,22 +1,21 @@
 from typing import Callable, Any, Dict, List, Optional, Union
-import time, zmq, json, logging
+from dotenv import load_dotenv
+import os, time, zmq, json, logging
 from .handlers import handlers
+from .controlers import *
 
-_socket_config: Dict[str, Optional[Union[str, int]]] = {
-    "protocol": "tcp",
-    "host": "localhost",
-    "port": 5555,
-}
+_socket_config: Dict[str, Optional[Union[str, int]]] = {}
 
 
 def _check_default(
     config: Dict[str, Optional[Union[str, int]]]
 ) -> Dict[str, Optional[Union[str, int]]]:
     """Check and set default values for the configuration."""
+    load_dotenv()
     default_config: Dict[str, Optional[Union[str, int]]] = {
-        "protocol": "tcp",
-        "host": "localhost",
-        "port": 5555,
+        "protocol": os.getenv("PROTOCOL", "tcp"),
+        "host": os.getenv("HOST", "localhost"),
+        "port": int(os.getenv("PORT", 5555)),
     }
 
     for key, value in default_config.items():
@@ -33,23 +32,24 @@ def _load_handler(header_str: str) -> Optional[Callable[[Dict[str, Any]], Any]]:
 
     # Verificar que las claves necesarias estén presentes
     command_name = header.get("command_name")
+    func_name = header.get("function")
     dataset = header.get("dataset")
 
     if command_name is None or dataset is None:
         raise ValueError("Missing command_name or dataset in header")
-
-    handler_key = f"{command_name}//{json.dumps(dataset)}"
+    handler_key = f"{command_name}//{func_name}//{json.dumps(dataset)}"
     handler = handlers.get(handler_key)
 
     if not handler:
         raise ValueError("Unknown command name or dataset")
 
-    return handler[0], handler[1]  # Retornar solo la función y el dataset
+    return handler_key, handler[0], handler[1]  # Retornar solo la función y el dataset
 
 
 def _load_data(data: List[bytes], dataset: Dict[str, Any]) -> Dict[str, Any]:
     """Load the data from the message into a dictionary."""
-    return json.loads(b"".join(data).decode("utf-8"), object_hook=lambda obj: dataset)
+    data_dict: Dict[str, Any] = json.loads(b"".join(data).decode("utf-8"))
+    return data_dict
 
 
 def start_listening() -> None:
@@ -79,8 +79,10 @@ def start_listening() -> None:
                     last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT)
                     logging.info(f"Received a message from: {last_endpoint}")
 
-                    handler_func, dataset = _load_handler(message[0].decode("utf-8"))
-                    logging.info(f"Redirecting to handler: {handler_func.__name__}")
+                    handler_name, handler_func, dataset = _load_handler(
+                        message[0].decode("utf-8")
+                    )
+                    logging.info(f"Redirecting to handler: {handler_name}")
 
                     incoming_data = _load_data(message[1:], dataset)
                     logging.info(f"checked incoming data: {dataset}")

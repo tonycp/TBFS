@@ -1,4 +1,4 @@
-from ..dtos import UserInputDto
+from ..dtos import UserDto
 from ..business_data import User, Repository
 
 __all__ = ["UserService"]
@@ -32,7 +32,7 @@ class UserService:
             .first()
         )
 
-    def create_user(self, user: UserInputDto):
+    def create_user(self, user: UserDto):
         """Create a new user."""
         user = User(
             name=user.name,
@@ -43,7 +43,7 @@ class UserService:
         self.repository.create(user)
         return user
 
-    def update_user(self, user_id: int, user: UserInputDto):
+    def update_user(self, user_id: int, user: UserDto):
         """Update a user by its ID."""
         user = User(
             id=user_id,

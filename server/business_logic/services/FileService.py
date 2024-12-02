@@ -1,4 +1,4 @@
-from ..dtos import FileInputDto
+from ..dtos import FileDto
 from ..business_data import File, file_tags, Repository
 
 __all__ = ["FileService"]
@@ -59,7 +59,7 @@ class FileService:
             .first()
         )
 
-    def create_file(self, file_input: FileInputDto):
+    def create_file(self, file_input: FileDto):
         """Create a new file with the given name."""
         new_file = File(
             name=file_input.name,
@@ -72,7 +72,7 @@ class FileService:
         self.repository.create(new_file)
         return new_file
 
-    def update_file(self, file_id: int, file_input: FileInputDto):
+    def update_file(self, file_id: int, file_input: FileDto):
         """Update the name of a file by its ID."""
         file = self.repository.get(File, file_id)
         file.name = (file_input.name,)

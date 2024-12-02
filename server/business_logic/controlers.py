@@ -1,33 +1,13 @@
-from .dtos import FileInputDto, TagInputDto, UserInputDto
-from .business_data import FileInputTypes
+from .dtos import FileDto
+from .business_services import ServerService
 from .handlers import *
 
-
-@Create(FileInputTypes)
-def create_file(data: FileInputDto):
-    pass
+_server_service = ServerService()
 
 
-@Update(FileInputTypes)
-def update_file(data: FileInputDto):
-    pass
-
-
-@Delete({"file_id": int})
-def delete_file(file_id):
-    pass
-
-
-@Get({"file_id": int})
-def get_file(file_id):
-    pass
-
-
-@Get(FileInputTypes)
-def get_file_by_input(data: FileInputDto):
-    pass
-
-
-@GetAll(FileInputTypes)
-def get_all_files(data: FileInputDto):
-    pass
+@GetAll({"tag_query": list[str]})
+def list(tag_query: list[str]) -> list[FileDto]:
+    file_service = _server_service.get_FileService()
+    tag_service = _server_service.get_TagService()
+    tags = [ tag.id for tag in tag_service.get_tags_by_names(tag_query)]
+    return file_service.get_files_by_tags(tags)

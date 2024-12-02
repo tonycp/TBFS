@@ -1,4 +1,4 @@
-from ..dtos import FileSourceInputDto
+from ..dtos import FileSourceDto
 from ..business_data import FileSource, file_tags, Repository
 
 __all__ = ["FileSourceService"]
@@ -30,7 +30,7 @@ class FileSourceService:
             .all()
         )
 
-    def create_file_source(self, file_source: FileSourceInputDto) -> FileSource:
+    def create_file_source(self, file_source: FileSourceDto) -> FileSource:
         new_file_source = FileSource(
             file_id=file_source.file_id,
             chunk_size=file_source.chunk_size,
@@ -43,7 +43,7 @@ class FileSourceService:
         return new_file_source
 
     def update_file_source(
-        self, file_source_id: int, file_source: FileSourceInputDto
+        self, file_source_id: int, file_source: FileSourceDto
     ) -> FileSource:
         file_source = self.repository.get(file_source_id)
         file_source.file_id = file_source.file_id

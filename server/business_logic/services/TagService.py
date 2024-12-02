@@ -1,4 +1,4 @@
-from ..dtos import TagInputDto
+from ..dtos import TagDto
 from ..business_data import Tag, file_tags, Repository
 
 __all__ = ["TagService"]
@@ -20,13 +20,17 @@ class TagService:
         """Get a tag by its name."""
         return self.repository.get_query().filter_by(name=name).first()
 
+    def get_tags_by_names(self, names: list[str]):
+        """Get tags by names."""
+        return self.repository.get_query().filter_by(name=",".join(names)).all()
+
     def get_tags_by_file_id(self, file_id: int):
         """Get tags by file ID."""
         return (
             self.repository.get_query().join(file_tags).filter_by(file_id=file_id).all()
         )
 
-    def create_tag(self, tag: TagInputDto):
+    def create_tag(self, tag: TagDto):
         """Create a new tag."""
         new_tag = Tag(
             name=tag.name, creation_date=tag.creation_date, update_date=tag.update_date
@@ -34,7 +38,7 @@ class TagService:
         self.repository.create(new_tag)
         return new_tag
 
-    def update_tag(self, tag_id: int, tag: TagInputDto):
+    def update_tag(self, tag_id: int, tag: TagDto):
         """Update a tag by its ID."""
         tag = self.repository.get(Tag, tag_id)
         tag.name = (tag.name,)

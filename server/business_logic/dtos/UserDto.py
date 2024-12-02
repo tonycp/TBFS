@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
 
-__all__ = ["UserInputDto"]
+__all__ = ["UserDto"]
 
 
-class UserInputDto:
+class UserDto:
     def __init__(
         self,
         name: str,

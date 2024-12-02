@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
 
-__all__ = ["FileInputDto"]
+__all__ = ["FileDto"]
 
 
-class FileInputDto:
+class FileDto:
     """
     Strongly typed class to represent file input data transfer object.
 

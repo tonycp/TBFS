@@ -68,7 +68,7 @@ class File(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     user: Mapped[User] = relationship(
-        back_populates="files", cascade="all, delete-orphan"
+        back_populates="files", cascade="one, delete-orphan"
     )
 
     tags: Mapped[List[Tag]] = relationship(
@@ -101,7 +101,7 @@ class FileSource(Base):
     )
 
     file: Mapped[File] = relationship(
-        back_populates="sources", cascade="all, delete-orphan"
+        back_populates="sources", cascade="one, delete-orphan"
     )
 
     __table_args__ = (
@@ -125,7 +125,7 @@ class Tag(Base):
         default=datetime.now(timezone.utc), nullable=False
     )
 
-    file: Mapped[List[File]] = relationship(
+    files: Mapped[List[File]] = relationship(
         secondary=file_tags, back_populates="tag", cascade="all, delete-orphan"
     )
 
