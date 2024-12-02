@@ -1,0 +1,73 @@
+version: '3.8'
+
+networks:
+  client_network:
+    driver: bridge
+  server_network:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:14.1-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5430:5430"
+    networks:
+      - server_network
+
+  server:
+    working_dir: /app
+    build:
+      context: ./server
+    environment:
+      PROTOCOL: tcp
+      HOST: 172.19.0.4
+      PORT: 5555
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - server_data:/app
+    depends_on:
+      - postgres
+    ports:
+      - "5555:5555"
+    networks:
+      - server_network
+
+  router:
+    working_dir: /app
+    build:
+      context: ./router
+    volumes:
+      - router_data:/app
+    networks:
+      - server_network
+      - client_network
+
+  client:
+    working_dir: /app
+    build:
+      context: ./client
+    environment:
+      PROTOCOL: tcp
+      HOST: 172.19.0.4
+      PORT: 5555
+    volumes:
+      - client_data:/app
+    depends_on:
+      - router
+    ports:
+      - "5557:5555"
+    networks:
+      - client_network
+
+volumes:
+  postgres_data:
+  server_data:
+  router_data:
+  client_data:
