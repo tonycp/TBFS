@@ -20,6 +20,12 @@ class ServerService:
         self.Tags: TagService = get_service(TagService, Tag)
         self.FileSources: FileSourceService = get_service(FileSourceService, FileSource)
 
+    def get_user_id(self, user_name: str) -> int:
+        user = self.Users.get_user_by_name(user_name)
+        if user is None:
+            return self.Users.create_user(UserDto(name=user_name, is_connected=True)).id
+        return user.id
+
     def get_files_by_tags(self, tag_names: List[str]):
         tags_ids = self.get_tags_by_names(tag_names)
         return self.Files.get_files_by_tags(tags_ids)

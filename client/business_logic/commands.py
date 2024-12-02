@@ -14,10 +14,10 @@ def set_client(client: FileClient = FileClient("tcp://localhost:5555")) -> None:
     _client = client
 
 
-def _send_data(command: str, content = None, **kwargs) -> None:
+def _send_data(command: str, **kwargs) -> None:
     """Send a message to the default client."""
     try:
-        response = _client.send_multipart_message(command, content, kwargs)
+        response = _client.send_multipart_message(command, kwargs)
         logging.info(response)
     except Exception as e:
         logging.error(e)
@@ -44,9 +44,7 @@ def add(files: List[str], tags: List[str]) -> None:
         try:
             logging.info(f"Processing file {file}")
             file_data = _client.get_file_info(file)
-            file_data["content"] = True
-            content = open(file, "rb").read()
-            _send_data("add", content=content, file=file_data, tags=tags)
+            _send_data("add", file=file_data, tags=tags)
         except Exception as e:
             logging.error(f"Error processing file {file}: {e}")
 

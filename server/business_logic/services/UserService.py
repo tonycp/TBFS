@@ -32,25 +32,25 @@ class UserService:
             .first()
         )
 
-    def create_user(self, user: UserDto):
+    def create_user(self, input: UserDto):
         """Create a new user."""
         user = User(
-            name=user.name,
-            is_connected=user.is_connected,
-            creation_date=user.creation_date,
-            update_date=user.update_date,
+            name=input.name,
+            is_connected=input.is_connected,
+            creation_date=input.creation_date,
+            update_date=input.update_date,
         )
         self.repository.create(user)
         return user
 
-    def update_user(self, user_id: int, user: UserDto):
+    def update_user(self, user_id: int, input: UserDto):
         """Update a user by its ID."""
         user = User(
             id=user_id,
-            name=user.name,
-            is_connected=user.is_connected,
-            creation_date=user.creation_date,
-            update_date=user.update_date,
+            name=input.name,
+            is_connected=input.is_connected,
+            creation_date=input.creation_date,
+            update_date=input.update_date,
         )
         self.repository.update(user)
         return user

@@ -48,8 +48,16 @@ def _load_handler(header_str: str) -> Optional[Callable[[Dict[str, Any]], Any]]:
 
 def _load_data(data: List[bytes], dataset: Dict[str, Any]) -> Dict[str, Any]:
     """Load the data from the message into a dictionary."""
-    data_dict: Dict[str, Any] = json.loads(b"".join(data).decode("utf-8"))
-    return data_dict
+    data_dict: Dict[str, Any] = json.loads(data[0].decode("utf-8"))
+    result = {}
+    for key, value_type in dataset.items():
+        value = data_dict.get(key)
+        if type(value) != dict:
+            result[key] = value_type(value)
+        else:
+            result[key] = value_type(**value)
+
+    return result
 
 
 def start_listening() -> None:
@@ -87,7 +95,7 @@ def start_listening() -> None:
                     incoming_data = _load_data(message[1:], dataset)
                     logging.info(f"checked incoming data: {dataset}")
 
-                    result = handler_func(incoming_data)
+                    result = handler_func(**incoming_data)
                     logging.info(f"Result: {result}")
 
                     socket.send_multipart([json.dumps(result).encode("utf-8")])
