@@ -26,7 +26,7 @@ class ServerService:
             if tag is None:
                 tag = self.Tags.create_tag(TagInputDto(tag_name))
             self.Files.add_tag(file_id, tag.id)
-    
+
     def _delete_tags(self, file_id: int, tag_list: List[str]):
         for tag_name in tag_list:
             tag = self.Tags.get_tag(TagInputDto(tag_name, None, None))
@@ -63,7 +63,10 @@ class ServerService:
         else:
             self.Files.update_file(new_file.id, file)
             file_source = self.copy_file(file, new_file.id)
-            self.FileSources.update_file_source(file_source)
+            file_source_id = self.FileSources.get_file_source(
+                FileSourceInputDto(new_file.id, None, None, None, None, None)
+            ).id
+            self.FileSources.update_file_source(file_source_id, file_source)
         self._add_tags(new_file.id, tag_list)
         return FileOutputDto._file_to_dto(new_file)
 
@@ -80,7 +83,9 @@ class ServerService:
             self._delete_tags(file.id, tags)
 
     def copy_file(self, file: FileInputDto, file_id: int) -> FileSourceInputDto:
-        dest_path = os.path.join(_service_config["content_path"], file.name)
+        dest_path = os.path.join(
+            _service_config["content_path"], f"{file.name}.{file.file_type}"
+        )
         file_loader = file.content
         with open(dest_path, "wb") as f:
             f.write(file_loader)

@@ -53,18 +53,20 @@ class FileClient:
 
     def get_file_info(self, file_path: str) -> dict:
         """Get file information."""
-        if not os.path.isfile(file_path):
-            raise ValueError(f"File not found: {file_path}")
+        absolute_path = os.path.abspath(file_path)
 
-        name = os.path.basename(file_path)
-        creation_time = os.path.getctime(file_path)
-        update_time = os.path.getmtime(file_path)
-        content = open(file_path, "rb").read()
+        if not os.path.exists(absolute_path):
+            raise ValueError(f"File not found: {absolute_path}")
+
+        name = os.path.basename(absolute_path)
+        creation_time = os.path.getctime(absolute_path)
+        update_time = os.path.getmtime(absolute_path)
+        content = open(absolute_path, "rb").read()
 
         file_info = {
             "name": os.path.splitext(name)[0],
             "file_type": os.path.splitext(name)[1][1:],
-            "size": os.path.getsize(file_path),
+            "size": os.path.getsize(absolute_path),
             "user_id": self.user_id,
             "creation_date": datetime.fromtimestamp(
                 creation_time, tz=timezone.utc

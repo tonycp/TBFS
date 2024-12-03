@@ -43,9 +43,9 @@ class User(Base):
         cascade="all, delete-orphan",
     )
 
-    __table_args__ = (
-        CheckConstraint("update_date >= creation_date", name="check_update_date"),
-    )
+    # __table_args__ = (
+    #     CheckConstraint("update_date >= creation_date", name="check_update_date"),
+    # )
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, name={self.name!r}, is_connected={self.is_connected!r})"
@@ -116,9 +116,9 @@ class FileSource(Base):
         single_parent=True,
     )
 
-    __table_args__ = (
-        CheckConstraint("update_date >= creation_date", name="check_update_date"),
-    )
+    # __table_args__ = (
+    #     CheckConstraint("update_date >= creation_date", name="check_update_date"),
+    # )
 
     def __repr__(self) -> str:
         return f"FileSource(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, chunk_number={self.chunk_number!r}, url={self.url!r})"
