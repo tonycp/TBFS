@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
 
-__all__ = ["FileSourceDto"]
+__all__ = ["FileSourceInputDto"]
 
 
-class FileSourceDto:
+class FileSourceInputDto:
     def __init__(
         self,
         file_id: int,

@@ -1,4 +1,4 @@
-from ..dtos import FileSourceDto
+from ..dtos import FileSourceInputDto
 from ..business_data import FileSource, file_tags, Repository
 
 __all__ = ["FileSourceService"]
@@ -8,8 +8,12 @@ class FileSourceService:
     def __init__(self, repository: Repository[FileSource]) -> None:
         self.repository = repository
 
-    def get_file_source_by_id(self, file_source_id: int) -> FileSource:
-        return self.repository.get(file_source_id)
+    def get_file_source(self, file_input: FileSourceInputDto) -> FileSource:
+        params = {}
+        for key, value in file_input.to_dict():
+            if value is not None:
+                params[key] = value
+        return self.repository.get_query().filter_by(**params).first()
 
     def get_all_file_sources(self) -> list[FileSource]:
         return self.repository.get_all()
@@ -27,7 +31,7 @@ class FileSourceService:
             self.repository.get_query().join(file_tags).filter_by(tag_id=tag_id).all()
         )
 
-    def create_file_source(self, file_source: FileSourceDto) -> FileSource:
+    def create_file_source(self, file_source: FileSourceInputDto) -> FileSource:
         new_file_source = FileSource(
             file_id=file_source.file_id,
             chunk_size=file_source.chunk_size,
@@ -40,7 +44,7 @@ class FileSourceService:
         return new_file_source
 
     def update_file_source(
-        self, file_source_id: int, file_source: FileSourceDto
+        self, file_source_id: int, file_source: FileSourceInputDto
     ) -> FileSource:
         file_source = self.repository.get(file_source_id)
         file_source.file_id = file_source.file_id

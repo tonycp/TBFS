@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
 
-__all__ = ["TagDto"]
+__all__ = ["TagInputDto", "TagOutputDto"]
 
 
-class TagDto:
+class TagInputDto:
     def __init__(
         self,
         name: str,
@@ -29,3 +29,18 @@ class TagDto:
 
     def __repr__(self) -> str:
         return f"TagInputDto(name={self.name!r})"
+
+
+class TagOutputDto(TagInputDto):
+    def __init__(self, id: int, **kwargs) -> None:
+        TagInputDto.__init__(self, **kwargs)
+        self.id = id
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "id": self.id,
+            **TagInputDto.to_dict(self),
+        }
+
+    def __repr__(self) -> str:
+        return f"TagOutputDto(id={self.id!r}, name={self.name!r})"

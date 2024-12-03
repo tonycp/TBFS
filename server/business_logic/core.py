@@ -37,7 +37,8 @@ def _load_handler(header_str: str) -> Optional[Callable[[Dict[str, Any]], Any]]:
 
     if command_name is None or dataset is None:
         raise ValueError("Missing command_name or dataset in header")
-    handler_key = f"{command_name}//{func_name}//{json.dumps(dataset)}"
+    args = ":?".join(dataset) + ":?"
+    handler_key = f"{command_name}//{func_name}//{args}"
     handler = handlers.get(handler_key)
 
     if not handler:
@@ -84,7 +85,7 @@ def start_listening() -> None:
                 try:
                     message = socket.recv_multipart(flags=zmq.NOBLOCK)
 
-                    last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT)
+                    last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT).decode("utf-8")
                     logging.info(f"Received a message from: {last_endpoint}")
 
                     handler_name, handler_func, dataset = _load_handler(
@@ -93,7 +94,7 @@ def start_listening() -> None:
                     logging.info(f"Redirecting to handler: {handler_name}")
 
                     incoming_data = _load_data(message[1:], dataset)
-                    logging.info(f"checked incoming data: {dataset}")
+                    logging.info(f"checked incoming data: {incoming_data}")
 
                     result = handler_func(**incoming_data)
                     logging.info(f"Result: {result}")

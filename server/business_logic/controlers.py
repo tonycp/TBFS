@@ -1,22 +1,21 @@
 from typing import List
 
 from .business_data import *
-from .dtos import FileDto
+from .dtos import FileInputDto
 from .business_services import ServerService
 from .handlers import *
 
 _server_service = ServerService()
 
 
-@Create({"file": FileDto, "tags": list})
-def add(file: FileDto, tags: List[str]) -> str:
+@Create({"file": FileInputDto, "tags": list})
+def add(file: FileInputDto, tags: List[str]) -> str:
     return str(_server_service.create_file(file, tags))
 
 
 @Delete({"tag_query": list})
 def delete(tag_query: List[str]) -> str:
-    tag_ids = _server_service.get_tags_by_names(tag_query)
-    _server_service.delete_files_by_tags(tag_ids)
+    _server_service.delete_file_by_tags(tag_query)
     return "Files deleted"
 
 
@@ -28,13 +27,13 @@ def list_files(tag_query: List[str]) -> list[str]:
 
 @Create({"tag_query": list, "tags": list})
 def add_tags(tag_query: List[str], tags: List[str]) -> str:
-    _server_service._add_tags(tag_query, tags)
+    _server_service.add_tags_to_files(tag_query, tags)
     return "Tags added"
 
 
 @Delete({"tag_query": list, "tags": list})
 def delete_tags(tag_query: List[str], tags: List[str]) -> str:
-    _server_service.delete_tags(tag_query, tags)
+    _server_service.delete_tags_from_files(tag_query, tags)
     return "Tags deleted"
 
 @Get({"user_name": str})

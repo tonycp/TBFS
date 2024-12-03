@@ -1,10 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
 
-__all__ = ["UserDto"]
+__all__ = ["UserInputDto", "UserOutputDto"]
 
 
-class UserDto:
+class UserInputDto:
     def __init__(
         self,
         name: str,
@@ -31,4 +31,19 @@ class UserDto:
         }
 
     def __repr__(self) -> str:
-        return f"UserInputDto(id={self.id!r}, name={self.name!r}, is_connected={self.is_connected!r})"
+        return f"UserInputDto(name={self.name!r}, is_connected={self.is_connected!r})"
+
+
+class UserOutputDto(UserInputDto):
+    def __init__(self, id: int, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.id = id
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "id": self.id,
+            **UserInputDto.to_dict(self),
+        }
+
+    def __repr__(self) -> str:
+        return f"UserOutputDto(id={self.id!r}, name={self.name!r}, is_connected={self.is_connected!r})"

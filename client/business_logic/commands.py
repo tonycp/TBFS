@@ -52,7 +52,6 @@ def check_client() -> None:
 
 def _send_data(command: str, **kwargs) -> None:
     """Send a message to the default client."""
-    check_client()
     try:
         response = _client.send_multipart_message(command, kwargs)
         logging.info(response)
@@ -105,6 +104,7 @@ def list(tag_query: List[str]) -> None:
     "--tag-query",
     "-q",
     type=str,
+    multiple=True,
     required=True,
     help="Tag query to add new tags.",
 )
@@ -119,6 +119,7 @@ def add_tags(tag_query: str, tags: List[str]) -> None:
     "--tag-query",
     "-q",
     type=str,
+    multiple=True,
     required=True,
     help="Tag query to delete.",
 )
