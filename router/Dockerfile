@@ -1,14 +1,15 @@
 # Usa la imagen base de Alpine
 FROM alpine
 
-WORKDIR /app
-
 # Instala iptables y otras utilidades necesarias
 RUN apk add --no-cache iptables iproute2
 
-# Copia el script de inicialización al contenedor
-COPY init.sh ./init.sh
-RUN chmod +x ./init.sh
+# Habilita el reenvío IP
+RUN echo "net.ipv4.ip_forward=1" | tee -a /etc/sysctl.conf
 
-# Comando por defecto para ejecutar el script de inicialización
-CMD ["./init.sh"]
+# Copia el script de inicialización al contenedor
+COPY route.sh /root/route.sh
+RUN chmod +x /root/route.sh
+
+# Establece el punto de entradas
+ENTRYPOINT /root/route.sh

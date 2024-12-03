@@ -12,6 +12,10 @@ EOL
 
 echo ".env file created."
 
+# Establecer la ruta predeterminada
+ip route del default
+ip route add default via ${ROUTER_IP}
+
 # Mantener el contenedor en ejecución
 python create_db.py
 python app.py
