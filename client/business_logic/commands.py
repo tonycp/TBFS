@@ -1,21 +1,58 @@
-import click
-import logging
-from typing import List
+import click, logging, os
+from typing import Any, Dict, List, Optional, Union
+from dotenv import load_dotenv
 from .clients import FileClient
 
-__all__ = ["add", "delete", "list", "add_tags", "delete_tags"]
+__all__ = [
+    "add",
+    "delete",
+    "list",
+    "add_tags",
+    "delete_tags",
+    "set_config",
+    "check_default",
+]
 
-_client = FileClient("tcp://localhost:5555")
+_socket_config: Dict[str, Optional[Union[str, int]]] = {}
 
 
-def set_client(client: FileClient = FileClient("tcp://localhost:5555")) -> None:
-    """Set the default client to send messages to."""
+def check_default(
+    config: Dict[str, Optional[Union[str, int]]] = {}
+) -> Dict[str, Optional[Union[str, int]]]:
+    """Check and set default values for the configuration."""
+    load_dotenv()
+    default_config: Dict[str, Optional[Union[str, int]]] = {
+        "protocol": os.getenv("PROTOCOL", "tcp"),
+        "host": os.getenv("HOST", "localhost"),
+        "port": int(os.getenv("PORT", 5555)),
+    }
+
+    for key, value in default_config.items():
+        config.setdefault(key, value)
+    return config
+
+
+def set_config(config: Dict[str, Optional[Any]]) -> None:
+    """Set the configuration for the server."""
+    global _socket_config
+    _socket_config.update(config)
+
+
+_client: FileClient = None
+
+
+def check_client() -> None:
     global _client
-    _client = client
+    if _client is not None:
+        return
+    _client = FileClient(
+        f"{_socket_config['protocol']}://{_socket_config['host']}:{_socket_config['port']}"
+    )
 
 
 def _send_data(command: str, **kwargs) -> None:
     """Send a message to the default client."""
+    check_client()
     try:
         response = _client.send_multipart_message(command, kwargs)
         logging.info(response)
