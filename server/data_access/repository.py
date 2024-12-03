@@ -35,7 +35,9 @@ class Repository(Generic[ModelType]):
     def get_query(self) -> Query[ModelType]:
         """Retrieve a query of type ModelType."""
         with self.get_session() as session:
-            return session.query(self.model)
+            query = session.query(self.model)
+            session.commit()
+        return query
 
     def create(self, obj: ModelType) -> None:
         """Add a new object of type ModelType to the database."""

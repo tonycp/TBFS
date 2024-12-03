@@ -32,8 +32,16 @@ class FileBaseDto:
             "file_type": self.file_type,
             "size": self.size,
             "user_id": self.user_id,
-            "creation_date": self.creation_date.strftime("%Y-%m-%d %H:%M:%S"),
-            "update_date": self.update_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "creation_date": (
+                self.creation_date.strftime("%Y-%m-%d %H:%M:%S")
+                if self.creation_date
+                else None
+            ),
+            "update_date": (
+                self.update_date.strftime("%Y-%m-%d %H:%M:%S")
+                if self.update_date
+                else None
+            ),
         }
 
     def __repr__(self) -> str:
@@ -58,11 +66,11 @@ class FileInputDto(FileBaseDto):
         FileBaseDto.__init__(self, **kwargs)
         self.content = content.encode("utf-8")
 
-    def to_dict(self) -> dict[str, str]:
-        return {
-            **FileBaseDto.to_dict(self),
-            "content": self.content.decode("utf-8"),
-        }
+    def to_dict(self, with_content: bool = False) -> dict[str, str]:
+        result = FileBaseDto.to_dict(self)
+        if with_content:
+            result["content"] = self.content.decode("utf-8")
+        return result
 
 
 class FileOutputDto(FileBaseDto):

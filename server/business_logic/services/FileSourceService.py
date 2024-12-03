@@ -10,7 +10,7 @@ class FileSourceService:
 
     def get_file_source(self, file_input: FileSourceInputDto) -> FileSource:
         params = {}
-        for key, value in file_input.to_dict():
+        for key, value in file_input.to_dict().items():
             if value is not None:
                 params[key] = value
         return self.repository.get_query().filter_by(**params).first()

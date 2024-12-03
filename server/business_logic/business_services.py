@@ -26,9 +26,18 @@ class ServerService:
             if tag is None:
                 tag = self.Tags.create_tag(TagInputDto(tag_name))
             self.Files.add_tag(file_id, tag.id)
+    
+    def _delete_tags(self, file_id: int, tag_list: List[str]):
+        for tag_name in tag_list:
+            tag = self.Tags.get_tag(TagInputDto(tag_name, None, None))
+            if tag is None:
+                continue
+            self.Files.delete_tag(file_id, tag.id)
 
     def add_tags_to_files(self, tag_query: List[str], tags: List[str]):
-        files = self.Files.get_files_by_tags(tag_query)
+        tag_ids = self.Tags.get_tags_by_query(tag_query)
+        tag_ids = list(map(lambda x: x.id, tag_ids))
+        files = self.Files.get_files_by_tags(tag_ids)
         for file in files:
             self._add_tags(file.id, tags)
 
@@ -56,12 +65,15 @@ class ServerService:
 
     def delete_file_by_tags(self, tags_query: List[str]) -> None:
         tag_ids = self.Tags.get_tags_by_query(tags_query)
+        tag_ids = list(map(lambda x: x.id, tag_ids))
         self.Files.delete_file_by_tags(tag_ids)
 
     def delete_tags_from_files(self, tag_query: List[str], tags: List[str]) -> None:
-        files = self.Files.get_files_by_tags(tag_query)
+        tag_ids = self.Tags.get_tags_by_query(tag_query)
+        tag_ids = list(map(lambda x: x.id, tag_ids))
+        files = self.Files.get_files_by_tags(tag_ids)
         for file in files:
-            self.Files.delete_tags(file.id, tags)
+            self._delete_tags(file.id, tags)
 
 
 def _instance_service(service, model: Type[ModelType]):

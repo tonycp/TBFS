@@ -26,8 +26,16 @@ class UserInputDto:
         return {
             "name": self.name,
             "is_connected": self.is_connected,
-            "creation_date": self.creation_date.strftime("%Y-%m-%d %H:%M:%S"),
-            "update_date": self.update_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "creation_date": (
+                self.creation_date.strftime("%Y-%m-%d %H:%M:%S")
+                if self.creation_date
+                else None
+            ),
+            "update_date": (
+                self.update_date.strftime("%Y-%m-%d %H:%M:%S")
+                if self.update_date
+                else None
+            ),
         }
 
     def __repr__(self) -> str:

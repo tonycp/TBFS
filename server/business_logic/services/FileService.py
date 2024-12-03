@@ -15,7 +15,7 @@ class FileService:
                 result = session.execute(
                     file_tags.select().filter_by(file_id=file_id, tag_id=tag_id)
                 )
-                if list(result) != []:
+                if result.one_or_none() is None:
                     session.execute(
                         file_tags.insert().values(file_id=file_id, tag_id=tag_id)
                     )
@@ -25,19 +25,16 @@ class FileService:
 
     def get_file(self, file_input: FileInputDto) -> File:
         params = {}
-        for key, value in file_input.to_dict():
+        for key, value in file_input.to_dict().items():
             if value is not None:
                 params[key] = value
         return self.repository.get_query().filter_by(**params).first()
 
     def get_files_by_tags(self, tag_ids: list[int]):
-        return (
-            self.repository.get_query()
-            .select_from(File)
-            .join(file_tags.c.file_id)
-            .filter(file_tags.c.tag_id.in_(tag_ids))
-            .all()
-        )
+        query = self.repository.get_query().select_from(File).join(file_tags)
+        if len(tag_ids) != 0:
+            query = query.filter(file_tags.c.tag_id.in_(tag_ids))
+        return query.all()
 
     def create_file(self, file_input: FileInputDto):
         """Create a new file with the given name."""
@@ -69,15 +66,15 @@ class FileService:
 
     def delete_file_by_tags(self, tag_ids: list[int]):
         files_ids = self.get_files_by_tags(tag_ids)
-        for file_id in files_ids:
-            self.repository.delete(file_id.id)
+        for file in files_ids:
+            self.repository.delete(file)
 
-    def delete_tags(self, file_id: int, tags: list[str]):
+    def delete_tag(self, file_id: int, tag_id: int):
         try:
             with self.repository.get_session() as session:
                 query = file_tags.delete().where(
                     file_tags.c.file_id == file_id,
-                    file_tags.c.tag_id.in_(tags),
+                    file_tags.c.tag_id == tag_id,
                 )
                 session.execute(query)
                 session.commit()
