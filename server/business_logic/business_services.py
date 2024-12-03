@@ -58,8 +58,12 @@ class ServerService:
         new_file = self.Files.get_file(file)
         if new_file is None:
             new_file = self.Files.create_file(file)
+            file_source = self.copy_file(file, new_file.id)
+            self.FileSources.create_file_source(file_source)
         else:
             self.Files.update_file(new_file.id, file)
+            file_source = self.copy_file(file, new_file.id)
+            self.FileSources.update_file_source(file_source)
         self._add_tags(new_file.id, tag_list)
         return FileOutputDto._file_to_dto(new_file)
 
@@ -75,6 +79,13 @@ class ServerService:
         for file in files:
             self._delete_tags(file.id, tags)
 
+    def copy_file(self, file: FileInputDto, file_id: int) -> FileSourceInputDto:
+        dest_path = os.path.join(_service_config["content_path"], file.name)
+        file_loader = file.content
+        with open(dest_path, "wb") as f:
+            f.write(file_loader)
+        return FileSourceInputDto(file_id, file.size, 1, dest_path)
+
 
 def _instance_service(service, model: Type[ModelType]):
     return service(get_repository(model, _service_config["database"]))
@@ -87,6 +98,7 @@ def _check_default(config: Dict[str, Optional[Any]]):
         "database": os.getenv(
             "DATABASE_URL", "postgresql://postgres:ranvedi@localhost/SDDB"
         ),
+        "content_path": os.getenv("CONTENT_PATH", "content"),
     }
 
     for key, value in default_config.items():

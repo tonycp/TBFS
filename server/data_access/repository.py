@@ -35,8 +35,12 @@ class Repository(Generic[ModelType]):
     def get_query(self) -> Query[ModelType]:
         """Retrieve a query of type ModelType."""
         with self.get_session() as session:
-            query = session.query(self.model)
-            session.commit()
+            try:
+                query = session.query(self.model)
+                session.commit()
+            except SQLAlchemyError as e:
+                session.rollback()
+                raise e
         return query
 
     def create(self, obj: ModelType) -> None:
