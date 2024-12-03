@@ -33,7 +33,7 @@ class ServerService:
             self._add_tags(file.id, tags)
 
     def get_user_id(self, user_name: str) -> int:
-        user = self.Users.get_user_by_name(user_name)
+        user = self.Users.get_user(UserInputDto(user_name, None, None, None))
         if user is None:
             return self.Users.create_user(
                 UserInputDto(name=user_name, is_connected=True)
