@@ -22,63 +22,64 @@ class ServerService:
 
     def _add_tags(self, file_id: int, tag_list: List[str]):
         for tag_name in tag_list:
-            tag = self.Tags.get_tag(TagInputDto(tag_name, None, None))
+            tag = self.Tags.get(TagInputDto(tag_name, None, None))
             if tag is None:
-                tag = self.Tags.create_tag(TagInputDto(tag_name))
-            self.Files.add_tag(file_id, tag.id)
+                tag = self.Tags.create(TagInputDto(tag_name))
+            self.Tags.add_tag(file_id, tag.id)
 
     def _delete_tags(self, file_id: int, tag_list: List[str]):
-        for tag_name in tag_list:
-            tag = self.Tags.get_tag(TagInputDto(tag_name, None, None))
-            if tag is None:
-                continue
-            self.Files.delete_tag(file_id, tag.id)
+        tags = self.Tags.get_by_query(tag_list)
+        tag_ids = list(map(lambda x: x.id, tags))
+        self.Tags.delete_tags(file_id, tag_ids)
 
     def add_tags_to_files(self, tag_query: List[str], tags: List[str]):
-        tag_ids = self.Tags.get_tags_by_query(tag_query)
+        tag_ids = self.Tags.get_by_query(tag_query)
         tag_ids = list(map(lambda x: x.id, tag_ids))
-        files = self.Files.get_files_by_tags(tag_ids)
+        files = self.Files.get_by_tags(tag_ids)
         for file in files:
             self._add_tags(file.id, tags)
 
-    def get_user_id(self, user_name: str) -> int:
-        user = self.Users.get_user(UserInputDto(user_name, None, None, None))
+    def get_user_id(self, name: str) -> int:
+        user = self.Users.get(UserInputDto(name, None, None, None))
         if user is None:
-            return self.Users.create_user(
-                UserInputDto(name=user_name, is_connected=True)
-            ).id
+            return self.Users.create(UserInputDto(name=name, is_connected=True)).id
         return user.id
 
-    def get_files_by_tags(self, tags_query: List[str]) -> List[FileOutputDto]:
-        tag_ids = self.Tags.get_tags_by_query(tags_query)
-        files = self.Files.get_files_by_tags(tag_ids)
-        return list(map(FileOutputDto._file_to_dto, files))
+    def get_files_by_tags(self, tags: List[str]) -> List[FileOutputDto]:
+        tag_ids = self.Tags.get_by_query(tags)
+        files = self.Files.get_by_tags(tag_ids)
+        return list(map(FileOutputDto._to_dto, files))
 
-    def create_file(self, file: FileInputDto, tag_list: List[str]) -> FileOutputDto:
-        new_file = self.Files.get_file(file)
-        if new_file is None:
-            new_file = self.Files.create_file(file)
-            file_source = self.copy_file(file, new_file.id)
-            self.FileSources.create_file_source(file_source)
+    def create_update_file(self, input: FileInputDto, tags: List[str]) -> FileOutputDto:
+        file = self.Files.get(input)
+
+        if file is None:
+            file = self.Files.create(input)
         else:
-            self.Files.update_file(new_file.id, file)
-            file_source = self.copy_file(file, new_file.id)
-            file_source_id = self.FileSources.get_file_source(
-                FileSourceInputDto(new_file.id, None, None, None, None, None)
-            ).id
-            self.FileSources.update_file_source(file_source_id, file_source)
-        self._add_tags(new_file.id, tag_list)
-        return FileOutputDto._file_to_dto(new_file)
+            file = self.Files.update(file.id, input)
+
+        source_input = self.copy_file(input, file.id)
+        self.create_update_source(source_input)
+        self._add_tags(file.id, tags)
+        return file.to_dict()
+
+    def create_update_source(self, input: FileSourceInputDto) -> FileSourceOutputDto:
+        source = self.FileSources.get(input)
+        if source is None:
+            source = self.FileSources.create(input)
+        else:
+            source = self.FileSources.update(source.id, input)
+        return source
 
     def delete_file_by_tags(self, tags_query: List[str]) -> None:
-        tag_ids = self.Tags.get_tags_by_query(tags_query)
+        tag_ids = self.Tags.get_by_query(tags_query)
         tag_ids = list(map(lambda x: x.id, tag_ids))
-        self.Files.delete_file_by_tags(tag_ids)
+        self.Files.delete_by_tags(tag_ids)
 
     def delete_tags_from_files(self, tag_query: List[str], tags: List[str]) -> None:
-        tag_ids = self.Tags.get_tags_by_query(tag_query)
+        tag_ids = self.Tags.get_by_query(tag_query)
         tag_ids = list(map(lambda x: x.id, tag_ids))
-        files = self.Files.get_files_by_tags(tag_ids)
+        files = self.Files.get_by_tags(tag_ids)
         for file in files:
             self._delete_tags(file.id, tags)
 

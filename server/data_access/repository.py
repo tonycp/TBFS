@@ -1,7 +1,7 @@
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker, scoped_session, Session as SessionType, Query
-from typing import TypeVar, Generic, Type, List
+from typing import Callable, TypeVar, Generic, Type, List
 from .models import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -34,44 +34,45 @@ class Repository(Generic[ModelType]):
 
     def get_query(self) -> Query[ModelType]:
         """Retrieve a query of type ModelType."""
+        return self.get_session().query(self.model)
+
+    def execute_all(self, query: Query[ModelType]) -> List[ModelType]:
+        """Execute a given query and return the results."""
         with self.get_session() as session:
-            try:
-                query = session.query(self.model)
-                session.commit()
-            except SQLAlchemyError as e:
-                session.rollback()
-                raise e
-        return query
+            return query.with_session(session).all()
+
+    def execute_one(self, query: Query[ModelType]) -> ModelType:
+        """Execute a given query and return the first result."""
+        with self.get_session() as session:
+            return query.with_session(session).first()
 
     def create(self, obj: ModelType) -> None:
         """Add a new object of type ModelType to the database."""
         with self.get_session() as session:
-            try:
-                session.add(obj)
-                session.commit()
-            except SQLAlchemyError as e:
-                session.rollback()
-                raise e
+            self._modify_bd(obj, session, session.add)
+
+    def create_all(self, obj: List[ModelType]) -> None:
+        """Add multiple new objects of type ModelType to the database."""
+        with self.get_session() as session:
+            self._modify_bd(obj, session, session.add_all)
 
     def update(self, obj: ModelType) -> None:
         """Update an existing object of type ModelType in the database."""
         with self.get_session() as session:
-            try:
-                session.merge(obj)
-                session.commit()
-            except SQLAlchemyError as e:
-                session.rollback()
-                raise e
+            self._modify_bd(obj, session, session.merge)
 
     def delete(self, obj: ModelType) -> None:
         """Delete an object of type ModelType from the database."""
         with self.get_session() as session:
-            try:
-                session.delete(obj)
-                session.commit()
-            except SQLAlchemyError as e:
-                session.rollback()
-                raise e
+            self._modify_bd(obj, session, session.delete)
+
+    def _modify_bd(self, obj: ModelType, session: SessionType, func: Callable) -> None:
+        try:
+            func(obj)
+            session.commit()
+        except SQLAlchemyError as e:
+            session.rollback()
+            raise e
 
 
 def get_repository(model: Type[ModelType], db_url: str) -> Repository[ModelType]:

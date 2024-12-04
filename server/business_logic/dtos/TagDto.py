@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
+from ..business_data import Tag
 
 __all__ = ["TagInputDto", "TagOutputDto"]
 
@@ -52,3 +53,12 @@ class TagOutputDto(TagInputDto):
 
     def __repr__(self) -> str:
         return f"TagOutputDto(id={self.id!r}, name={self.name!r})"
+
+    @staticmethod
+    def _to_dto(tag: Tag) -> TagOutputDto:
+        return TagOutputDto(
+            id=tag.id,
+            name=tag.name,
+            creation_date=tag.creation_date,
+            update_date=tag.update_date,
+        )

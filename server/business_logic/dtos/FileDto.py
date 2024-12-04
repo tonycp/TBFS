@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
+from ..business_data import File
 
 __all__ = ["FileInputDto", "FileOutputDto"]
 
@@ -100,7 +101,8 @@ class FileOutputDto(FileBaseDto):
     def __repr__(self) -> str:
         return f"FileInputDto(id={self.id}, name={self.name!r}, file_type={self.file_type!r}, size={self.size!r})"
 
-    def _file_to_dto(file) -> FileOutputDto:
+    @staticmethod
+    def _to_dto(file: File) -> FileOutputDto:
         return FileOutputDto(
             id=file.id,
             name=file.name,

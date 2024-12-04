@@ -10,7 +10,7 @@ _server_service = ServerService()
 
 @Create({"file": FileInputDto, "tags": list})
 def add(file: FileInputDto, tags: List[str]) -> str:
-    return str(_server_service.create_file(file, tags))
+    return str(_server_service.create_update_file(file, tags))
 
 
 @Delete({"tag_query": list})
@@ -35,6 +35,7 @@ def add_tags(tag_query: List[str], tags: List[str]) -> str:
 def delete_tags(tag_query: List[str], tags: List[str]) -> str:
     _server_service.delete_tags_from_files(tag_query, tags)
     return "Tags deleted"
+
 
 @Get({"user_name": str})
 def get_user_id(user_name: str) -> int:

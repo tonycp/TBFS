@@ -8,14 +8,16 @@ class UserService:
     def __init__(self, repository: Repository[User]):
         self.repository = repository
 
-    def get_user(self, file_input: UserInputDto) -> User:
-        params = {}
-        for key, value in file_input.to_dict().items():
-            if value is not None:
-                params[key] = value
-        return self.repository.get_query().filter_by(**params).first()
+    def get(self, input: UserInputDto) -> UserOutputDto | None:
+        """Retrieve a user based on the provided input DTO."""
+        params = {
+            key: value for key, value in input.to_dict().items() if value is not None
+        }
+        query = self.repository.get_query().filter_by(**params)
+        user = self.repository.execute_one(query)
+        return UserOutputDto._to_dto(user) if user else None
 
-    def create_user(self, input: UserInputDto):
+    def create(self, input: UserInputDto) -> UserOutputDto:
         """Create a new user."""
         user = User(
             name=input.name,
@@ -24,18 +26,21 @@ class UserService:
             update_date=input.update_date,
         )
         self.repository.create(user)
-        return user
+        return UserOutputDto._to_dto(user)
 
-    def update_user(self, user_id: int, input: UserInputDto):
+    def update(self, id: int, input: UserInputDto) -> UserOutputDto:
         """Update a user by its ID."""
-        user = self.repository.get(user_id)
+        user = self.repository.get(id)
+        if user is None:
+            return None
+
         user.name = input.name
         user.is_connected = input.is_connected
         user.creation_date = input.creation_date
         user.update_date = input.update_date
         self.repository.update(user)
-        return user
+        return UserOutputDto._to_dto(user)
 
-    def delete_user(self, user_id: int):
+    def delete(self, id: int) -> None:
         """Delete a user by its ID."""
-        self.repository.delete(user_id)
+        self.repository.delete(id)

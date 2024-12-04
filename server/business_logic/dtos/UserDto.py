@@ -1,6 +1,8 @@
 from __future__ import annotations
 from datetime import datetime
 
+from ..business_data import User
+
 __all__ = ["UserInputDto", "UserOutputDto"]
 
 
@@ -55,3 +57,13 @@ class UserOutputDto(UserInputDto):
 
     def __repr__(self) -> str:
         return f"UserOutputDto(id={self.id!r}, name={self.name!r}, is_connected={self.is_connected!r})"
+
+    @staticmethod
+    def _to_dto(user: User) -> UserOutputDto:
+        return UserOutputDto(
+            user.id,
+            name=user.name,
+            is_connected=user.is_connected,
+            creation_date=user.creation_date,
+            update_date=user.update_date,
+        )

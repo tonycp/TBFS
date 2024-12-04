@@ -78,7 +78,7 @@ class FileClient:
             "content": content.decode("utf-8"),
         }
 
-        logging.info("File info: %s", file_info)
+        logging.info("File info: %s", json.dumps(file_info))
         return file_info
 
     def send_multipart_message(
