@@ -46,10 +46,13 @@ class FileClient:
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
         self.socket.connect(self.server_url)
-        self.user_id = self.get_user_id()
+        self.user_id = None
 
     def get_user_id(self) -> int:
-        return int(self.send_multipart_message("get_user_id", {}))
+        logging.info("Getting user id...")
+        response = int(self._send_multipart_message("get_user_id", {}))
+        logging.info("User id: %s", response)
+        return response
 
     def get_file_info(self, file_path: str) -> dict:
         """Get file information."""
@@ -59,6 +62,8 @@ class FileClient:
         if not os.path.exists(absolute_path):
             raise ValueError(f"File not found: {absolute_path}")
 
+        if self.user_id is None:
+            self.user_id = self.get_user_id()
         name = os.path.basename(absolute_path)
         creation_time = os.path.getctime(absolute_path)
         update_time = os.path.getmtime(absolute_path)
@@ -81,7 +86,12 @@ class FileClient:
         logging.info("File info: %s", json.dumps(file_info))
         return file_info
 
-    def send_multipart_message(
+    def send_message(self, command: str, data: dict[str, Optional[str]]):
+        if self.user_id is None:
+            self.user_id = self.get_user_id()
+        return self._send_multipart_message(command, data)
+
+    def _send_multipart_message(
         self, command: str, data: dict[str, Optional[str]]
     ) -> str:
         """Send a multipart message to the server."""
@@ -95,8 +105,7 @@ class FileClient:
 
         parts = [command_message, message]
 
-        endpoint = self.socket.getsockopt_string(zmq.SOCKS_PROXY)
-        logging.info("Sending message to: %s", endpoint)
+        logging.info("Sending message to: %s", self.server_url)
         self.socket.send_multipart(parts)
 
         response = self.socket.recv_multipart()

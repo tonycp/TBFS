@@ -8,25 +8,25 @@ class UserService:
     def __init__(self, repository: Repository[User]):
         self.repository = repository
 
-    def get(self, input: UserInputDto) -> UserOutputDto | None:
+    def get(self, input: UserInputDto) -> User | None:
         """Retrieve a user based on the provided input DTO."""
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
         query = self.repository.get_query().filter_by(**params)
-        user = self.repository.execute_one(query)
-        return UserOutputDto._to_dto(user) if user else None
+        return self.repository.execute_one(query)
 
     def create(self, input: UserInputDto) -> UserOutputDto:
         """Create a new user."""
-        user = User(
-            name=input.name,
-            is_connected=input.is_connected,
-            creation_date=input.creation_date,
-            update_date=input.update_date,
+        return self.repository.create(
+            User(
+                name=input.name,
+                is_connected=input.is_connected,
+                creation_date=input.creation_date,
+                update_date=input.update_date,
+            ),
+            UserOutputDto._to_dto,
         )
-        self.repository.create(user)
-        return UserOutputDto._to_dto(user)
 
     def update(self, id: int, input: UserInputDto) -> UserOutputDto:
         """Update a user by its ID."""

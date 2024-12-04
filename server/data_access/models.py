@@ -28,7 +28,7 @@ file_tags = Table(
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(30), nullable=False)
     is_connected: Mapped[bool] = mapped_column(default=False, nullable=False)
     creation_date: Mapped[datetime] = mapped_column(
@@ -43,9 +43,9 @@ class User(Base):
         cascade="all, delete-orphan",
     )
 
-    # __table_args__ = (
-    #     CheckConstraint("update_date >= creation_date", name="check_update_date"),
-    # )
+    __table_args__ = (
+        CheckConstraint("update_date >= creation_date", name="check_update_date"),
+    )
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, name={self.name!r}, is_connected={self.is_connected!r})"
@@ -54,7 +54,7 @@ class User(Base):
 class File(Base):
     __tablename__ = "files"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_type: Mapped[str] = mapped_column(String(50), nullable=False)
     size: Mapped[int] = mapped_column(nullable=False)
@@ -70,13 +70,13 @@ class File(Base):
 
     user: Mapped[User] = relationship(
         back_populates="files",
-        cascade="all, delete-orphan",
         single_parent=True,
     )
 
     tags: Mapped[List[Tag]] = relationship(
         secondary=file_tags,
         back_populates="files",
+        cascade="all",
     )
 
     sources: Mapped[List[FileSource]] = relationship(
@@ -87,7 +87,6 @@ class File(Base):
 
     __table_args__ = (
         UniqueConstraint("name", "file_type", "user_id", name="uq_name_type_by_user"),
-        # CheckConstraint("update_date >= creation_date", name="check_update_date"),
     )
 
     def __repr__(self) -> str:
@@ -97,7 +96,7 @@ class File(Base):
 class FileSource(Base):
     __tablename__ = "file_sources"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     file_id: Mapped[int] = mapped_column(ForeignKey("files.id"))
     chunk_size: Mapped[int] = mapped_column(nullable=False)
     chunk_number: Mapped[int] = mapped_column(nullable=False)
@@ -116,10 +115,6 @@ class FileSource(Base):
         single_parent=True,
     )
 
-    # __table_args__ = (
-    #     CheckConstraint("update_date >= creation_date", name="check_update_date"),
-    # )
-
     def __repr__(self) -> str:
         return f"FileSource(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, chunk_number={self.chunk_number!r}, url={self.url!r})"
 
@@ -127,7 +122,7 @@ class FileSource(Base):
 class Tag(Base):
     __tablename__ = "tags"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
     creation_date: Mapped[datetime] = mapped_column(

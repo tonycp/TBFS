@@ -53,7 +53,9 @@ def check_client() -> None:
 def _send_data(command: str, **kwargs) -> None:
     """Send a message to the default client."""
     try:
-        _client.send_multipart_message(command, kwargs)
+        logging.info("Executing command: %s", command)
+        response = _client.send_message(command, kwargs)
+        logging.info(response)
     except Exception as e:
         logging.error(e)
 

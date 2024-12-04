@@ -5,6 +5,7 @@ from typing import Callable, TypeVar, Generic, Type, List
 from .models import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
+ModelTypeDTO = TypeVar("ModelTypeDTO")
 
 
 class Repository(Generic[ModelType]):
@@ -46,10 +47,15 @@ class Repository(Generic[ModelType]):
         with self.get_session() as session:
             return query.with_session(session).first()
 
-    def create(self, obj: ModelType) -> None:
+    def create(
+        self,
+        obj: ModelType,
+        to_dto: Callable[[ModelType], ModelTypeDTO] = lambda _: None,
+    ) -> ModelTypeDTO:
         """Add a new object of type ModelType to the database."""
         with self.get_session() as session:
             self._modify_bd(obj, session, session.add)
+            return to_dto(obj)
 
     def create_all(self, obj: List[ModelType]) -> None:
         """Add multiple new objects of type ModelType to the database."""

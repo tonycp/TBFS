@@ -9,35 +9,34 @@ class FileService:
     def __init__(self, repository: Repository[File]):
         self.repository = repository
 
-    def get(self, input: FileInputDto) -> FileOutputDto | None:
+    def get(self, input: FileInputDto) -> File | None:
         """Retrieve a file based on the provided input DTO."""
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
         query = self.repository.get_query().filter_by(**params)
-        file = self.repository.execute_one(query)
-        return FileOutputDto._to_dto(file) if file else None
+        return self.repository.execute_one(query)
 
-    def get_by_tags(self, ids: List[int]) -> List[FileOutputDto]:
+    def get_by_tags(self, ids: List[int]) -> List[File]:
         """Retrieve files associated with the given tag IDs."""
         query = self.repository.get_query().select_from(File).join(file_tags)
         if ids:
             query = query.filter(file_tags.c.tag_id.in_(ids))
-        files = self.repository.execute_all(query)
-        return list(map(FileOutputDto._to_dto, files))
+        return self.repository.execute_all(query)
 
     def create(self, input: FileInputDto) -> FileOutputDto:
         """Create a new file with the given input DTO."""
-        file = File(
-            name=input.name,
-            file_type=input.file_type,
-            size=input.size,
-            user_id=input.user_id,
-            creation_date=input.creation_date,
-            update_date=input.update_date,
+        return self.repository.create(
+            File(
+                name=input.name,
+                file_type=input.file_type,
+                size=input.size,
+                user_id=input.user_id,
+                creation_date=input.creation_date,
+                update_date=input.update_date,
+            ),
+            FileOutputDto._to_dto,
         )
-        self.repository.create(file)
-        return FileOutputDto._to_dto(file)
 
     def update(self, id: int, input: FileInputDto) -> FileOutputDto:
         """Update an existing file by its ID."""

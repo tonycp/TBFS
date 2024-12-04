@@ -20,33 +20,18 @@ class ServerService:
         self.Tags: TagService = get_service(TagService, Tag)
         self.FileSources: FileSourceService = get_service(FileSourceService, FileSource)
 
-    def _add_tags(self, file_id: int, tag_list: List[str]):
-        for tag_name in tag_list:
-            tag = self.Tags.get(TagInputDto(tag_name, None, None))
-            if tag is None:
-                tag = self.Tags.create(TagInputDto(tag_name))
-            self.Tags.add_tag(file_id, tag.id)
-
-    def _delete_tags(self, file_id: int, tag_list: List[str]):
-        tags = self.Tags.get_by_query(tag_list)
-        tag_ids = list(map(lambda x: x.id, tags))
-        self.Tags.delete_tags(file_id, tag_ids)
-
-    def add_tags_to_files(self, tag_query: List[str], tags: List[str]):
-        tag_ids = self.Tags.get_by_query(tag_query)
-        tag_ids = list(map(lambda x: x.id, tag_ids))
-        files = self.Files.get_by_tags(tag_ids)
-        for file in files:
-            self._add_tags(file.id, tags)
-
     def get_user_id(self, name: str) -> int:
         user = self.Users.get(UserInputDto(name, None, None, None))
         if user is None:
-            return self.Users.create(UserInputDto(name=name, is_connected=True)).id
+            user = self.Users.create(UserInputDto(name, True))
         return user.id
 
-    def get_files_by_tags(self, tags: List[str]) -> List[FileOutputDto]:
+    def get_tags_id(self, tags: List[str]) -> List[int]:
         tag_ids = self.Tags.get_by_query(tags)
+        return list(map(lambda x: x.id, tag_ids))
+
+    def get_files_by_tags(self, tags: List[str]) -> List[FileOutputDto]:
+        tag_ids = self.get_tags_id(tags)
         files = self.Files.get_by_tags(tag_ids)
         return list(map(FileOutputDto._to_dto, files))
 
@@ -54,22 +39,27 @@ class ServerService:
         file = self.Files.get(input)
 
         if file is None:
-            file = self.Files.create(input)
+            dto = self.Files.create(input)
         else:
-            file = self.Files.update(file.id, input)
+            dto = self.Files.update(file.id, input)
 
-        source_input = self.copy_file(input, file.id)
+        source_input = self.copy_file(input, dto.id)
         self.create_update_source(source_input)
-        self._add_tags(file.id, tags)
-        return file.to_dict()
+        self._add_tags(dto.id, tags)
+        return dto.to_dict()
 
     def create_update_source(self, input: FileSourceInputDto) -> FileSourceOutputDto:
         source = self.FileSources.get(input)
         if source is None:
-            source = self.FileSources.create(input)
+            dto = self.FileSources.create(input)
         else:
-            source = self.FileSources.update(source.id, input)
-        return source
+            dto = self.FileSources.update(source.id, input)
+        return dto
+
+    def add_tags_to_files(self, tag_query: List[str], tags: List[str]):
+        files = self.get_files_by_tags(tag_query)
+        for file in files:
+            self._add_tags(file.id, tags)
 
     def delete_file_by_tags(self, tags_query: List[str]) -> None:
         tag_ids = self.Tags.get_by_query(tags_query)
@@ -91,6 +81,17 @@ class ServerService:
         with open(dest_path, "wb") as f:
             f.write(file_loader)
         return FileSourceInputDto(file_id, file.size, 1, dest_path)
+
+    def _add_tags(self, file_id: int, tag_list: List[str]):
+        for tag_name in tag_list:
+            tag = self.Tags.get(TagInputDto(tag_name, None, None))
+            if tag is None:
+                tag = self.Tags.create(TagInputDto(tag_name))
+            self.Tags.add_tag(file_id, tag.id)
+
+    def _delete_tags(self, file_id: int, tag_list: List[str]):
+        tag_ids = self.get_tags_id(tag_list)
+        self.Tags.delete_tags(file_id, tag_ids)
 
 
 def _instance_service(service, model: Type[ModelType]):

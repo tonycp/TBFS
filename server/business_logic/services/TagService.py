@@ -9,30 +9,29 @@ class TagService:
     def __init__(self, repository: Repository[Tag]):
         self.repository = repository
 
-    def get(self, input: TagInputDto) -> TagOutputDto | None:
+    def get(self, input: TagInputDto) -> Tag | None:
         """Retrieve a tag based on the provided input DTO."""
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
         query = self.repository.get_query().filter_by(**params)
-        tag = self.repository.execute_one(query)
-        return TagOutputDto._to_dto(tag) if tag else None
+        return self.repository.execute_one(query)
 
-    def get_by_query(self, query: List[str]) -> List[TagOutputDto]:
+    def get_by_query(self, query: List[str]) -> List[Tag]:
         """Retrieve tags that match the given names."""
         query = self.repository.get_query().filter(Tag.name.in_(query))
-        tags = self.repository.execute_all(query)
-        return list(map(TagOutputDto._to_dto, tags))
+        return self.repository.execute_all(query)
 
     def create(self, input: TagInputDto) -> TagOutputDto:
         """Create a new tag."""
-        tag = Tag(
-            name=input.name,
-            creation_date=input.creation_date,
-            update_date=input.update_date,
+        return self.repository.create(
+            Tag(
+                name=input.name,
+                creation_date=input.creation_date,
+                update_date=input.update_date,
+            ),
+            TagOutputDto._to_dto,
         )
-        self.repository.create(tag)
-        return TagOutputDto._to_dto(tag)
 
     def update(self, id: int, input: TagInputDto) -> TagOutputDto:
         """Update a tag by its ID."""
