@@ -53,8 +53,7 @@ def check_client() -> None:
 def _send_data(command: str, **kwargs) -> None:
     """Send a message to the default client."""
     try:
-        response = _client.send_multipart_message(command, kwargs)
-        logging.info(response)
+        _client.send_multipart_message(command, kwargs)
     except Exception as e:
         logging.error(e)
 
@@ -78,7 +77,6 @@ def add(files: List[str], tags: List[str]) -> None:
     """Copy one or more files to the system and register them with the tags contained in TAG_LIST."""
     for file in files:
         try:
-            logging.info(f"Processing file {file}")
             file_data = _client.get_file_info(file)
             _send_data("add", file=file_data, tags=tags)
         except Exception as e:

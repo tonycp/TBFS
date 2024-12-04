@@ -1,4 +1,4 @@
-import zmq, json, os
+import zmq, json, os, logging
 from typing import Optional
 from datetime import datetime, timezone
 
@@ -54,6 +54,7 @@ class FileClient:
     def get_file_info(self, file_path: str) -> dict:
         """Get file information."""
         absolute_path = os.path.abspath(file_path)
+        logging.info("Getting file info: %s...", absolute_path)
 
         if not os.path.exists(absolute_path):
             raise ValueError(f"File not found: {absolute_path}")
@@ -77,6 +78,7 @@ class FileClient:
             "content": content.decode("utf-8"),
         }
 
+        logging.info("File info: %s", file_info)
         return file_info
 
     def send_multipart_message(
@@ -93,6 +95,11 @@ class FileClient:
 
         parts = [command_message, message]
 
+        endpoint = self.socket.getsockopt_string(zmq.SOCKS_PROXY)
+        logging.info("Sending message to: %s", endpoint)
         self.socket.send_multipart(parts)
+
         response = self.socket.recv_multipart()
+        last_endpoint = self.socket.getsockopt_string(zmq.LAST_ENDPOINT)
+        logging.info("Received response from: %s", last_endpoint)
         return response[0].decode("utf-8")

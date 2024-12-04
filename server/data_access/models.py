@@ -87,7 +87,7 @@ class File(Base):
 
     __table_args__ = (
         UniqueConstraint("name", "file_type", "user_id", name="uq_name_type_by_user"),
-        CheckConstraint("update_date >= creation_date", name="check_update_date"),
+        # CheckConstraint("update_date >= creation_date", name="check_update_date"),
     )
 
     def __repr__(self) -> str:
@@ -140,6 +140,10 @@ class Tag(Base):
     files: Mapped[List[File]] = relationship(
         secondary=file_tags,
         back_populates="tags",
+    )
+
+    __table_args__ = (
+        CheckConstraint("update_date >= creation_date", name="check_update_date"),
     )
 
     def __repr__(self) -> str:
