@@ -1,4 +1,4 @@
-from data_access import *
+from data import *
 
 FileInputTypes = {
     "name": str,

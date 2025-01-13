@@ -1,5 +1,5 @@
 import logging, logging.handlers as handlers
-from business_logic.commands import check_client, cli, check_default, set_config
+from logic.commands import check_client, cli, check_default, set_config
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,7 +1,7 @@
 # Configura la URL de conexión a tu base de datos
 import os
 from dotenv import load_dotenv
-from data_access import Base
+from data import Base
 from sqlalchemy import create_engine
 
 load_dotenv()
