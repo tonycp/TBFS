@@ -4,7 +4,6 @@ from ..business_data import File
 
 __all__ = ["FileInputDto", "FileOutputDto"]
 
-
 class FileBaseDto:
     def __init__(
         self,
@@ -48,7 +47,6 @@ class FileBaseDto:
     def __repr__(self) -> str:
         return f"FileBaseDto(name={self.name!r}, file_type={self.file_type!r}, size={self.size!r}, user_id={self.user_id!r})"
 
-
 class FileInputDto(FileBaseDto):
     """
     Strongly typed class to represent file input data transfer object.
@@ -72,7 +70,6 @@ class FileInputDto(FileBaseDto):
         if with_content:
             result["content"] = self.content.decode("utf-8")
         return result
-
 
 class FileOutputDto(FileBaseDto):
     """

@@ -4,13 +4,11 @@ from ..business_data import FileSource
 
 __all__ = ["FileSourceInputDto", "FileSourceOutputDto"]
 
-
 class FileSourceInputDto:
     def __init__(
         self,
         file_id: int,
         chunk_size: int,
-        chunk_number: int,
         url: str,
         creation_date: datetime | str = datetime.now(),
         update_date: datetime | str = datetime.now(),
@@ -22,7 +20,6 @@ class FileSourceInputDto:
 
         self.file_id = file_id
         self.chunk_size = chunk_size
-        self.chunk_number = chunk_number
         self.url = url
         self.creation_date = creation_date
         self.update_date = update_date
@@ -31,7 +28,6 @@ class FileSourceInputDto:
         return {
             "file_id": self.file_id,
             "chunk_size": self.chunk_size,
-            "chunk_number": self.chunk_number,
             "url": self.url,
             "creation_date": (
                 self.creation_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -46,8 +42,7 @@ class FileSourceInputDto:
         }
 
     def __repr__(self) -> str:
-        return f"FileSourceInputDto(file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, chunk_number={self.chunk_number!r}, url={self.url!r})"
-
+        return f"FileSourceInputDto(file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, url={self.url!r})"
 
 class FileSourceOutputDto(FileSourceInputDto):
     def __init__(self, id: int, **kwargs) -> None:
@@ -58,7 +53,7 @@ class FileSourceOutputDto(FileSourceInputDto):
         return {**FileSourceInputDto.to_dict(self), "id": self.id}
 
     def __repr__(self) -> str:
-        return f"FileSourceOutputDto(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, chunk_number={self.chunk_number!r}, url={self.url!r})"
+        return f"FileSourceOutputDto(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, url={self.url!r})"
 
     @staticmethod
     def _to_dto(source: FileSource) -> FileSourceOutputDto:
@@ -66,7 +61,6 @@ class FileSourceOutputDto(FileSourceInputDto):
             id=source.id,
             file_id=source.file_id,
             chunk_size=source.chunk_size,
-            chunk_number=source.chunk_number,
             url=source.url,
             creation_date=source.creation_date,
             update_date=source.update_date,
