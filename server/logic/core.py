@@ -7,7 +7,6 @@ from .chord import ChordNode
 __all__ = ["start_server", "set_config"]
 
 _socket_config: Dict[str, Optional[Union[str, int]]] = {}
-_chord_node: Optional[ChordNode] = None
 
 
 def _check_default(
@@ -41,32 +40,44 @@ def _parse_header(header_str: str) -> Tuple[str, str, Dict[str, Any]]:
     return command_name, func_name, dataset
 
 
-def _start_listening(socket, poller) -> None:
+def _solver_request(header_str: str) -> str:
+    """Solve the request and return the result."""
+    command_name, func_name, dataset = _parse_header(header_str)
+    return handle_request((command_name, func_name, dataset))
+
+
+def _start_listening(poller: zmq.Poller) -> None:
     while True:
         time.sleep(0.01)
-        socks: Dict[zmq.Socket, int] = dict(poller.poll())
-        if socket in socks and socks[socket] != zmq.POLLIN:
-            continue
-        try:
-            message = socket.recv_multipart(flags=zmq.NOBLOCK)
-            decode = message[0].decode("utf-8")
+        events = poller.poll()
+        for socket_event, event in events:
+            if event != zmq.POLLIN:
+                continue
 
-            last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT).decode("utf-8")
-            logging.info(f"Received a message from: {last_endpoint}")
+            socket_event: zmq.Socket
+            try:
+                message = socket_event.recv_multipart(flags=zmq.NOBLOCK)
+                decode = message[0].decode("utf-8")
 
-            command_name, func_name, data = _parse_header(decode)
-            result = handle_request(command_name, func_name, data)
-            logging.info(f"Result: {result}")
+                last_endpoint = socket_event.getsockopt(zmq.LAST_ENDPOINT).decode(
+                    "utf-8"
+                )
+                logging.info(f"Received a message from: {last_endpoint}")
 
-            socket.send_multipart([result.encode("utf-8")])
-            logging.info(f"Response sent to: {last_endpoint}")
-        except ValueError as e:
-            logging.error(f"Error processing message: {e}")
+                result = _solver_request(decode)
+                logging.info(f"Result: {result}")
 
-            socket.send_multipart([json.dumps({"error": str(e)}).encode("utf-8")])
-            logging.info(f"Error sent to: {last_endpoint}")
-        except zmq.Again:
-            continue
+                socket_event.send_multipart([result.encode("utf-8")])
+                logging.info(f"Response sent to: {last_endpoint}")
+            except ValueError as e:
+                logging.error(f"Error processing message: {e}")
+
+                socket_event.send_multipart(
+                    [json.dumps({"error": str(e)}).encode("utf-8")]
+                )
+                logging.info(f"Error sent to: {last_endpoint}")
+            except zmq.Again:
+                continue
 
 
 def start_server() -> None:
@@ -74,10 +85,6 @@ def start_server() -> None:
 
     config = _check_default(_socket_config)
     logging.info("checked config")
-
-    global _chord_node
-    _chord_node = ChordNode(config["host"], config["chord_port"])
-    _chord_node.join_network()
 
     context: zmq.Context = zmq.Context.instance()
     socket: zmq.Socket = context.socket(zmq.REP)
@@ -91,7 +98,7 @@ def start_server() -> None:
     poller.register(socket, zmq.POLLIN)
     logging.info("Starting listening...")
     try:
-        _start_listening(socket, poller)
+        _start_listening(poller)
     except KeyboardInterrupt:
         logging.info("Server shutting down.")
     finally:
