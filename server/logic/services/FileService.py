@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from ..dtos import FileInputDto, FileOutputDto
 from ..business_data import File, file_tags, Repository
@@ -6,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 __all__ = ["FileService"]
 
+
 class FileService:
     def __init__(self, repository: Repository[File], hash_service: HashService):
         self.repository = repository
@@ -13,6 +15,7 @@ class FileService:
 
     def get(self, input: FileInputDto) -> File | None:
         """Retrieve a file based on the provided input DTO."""
+        logging.info(f"Getting file with input: {input}")
         key = hash(input.name)
         node_id = self.hash_service.get_node_id(key)
         if node_id is None:
@@ -21,12 +24,14 @@ class FileService:
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
-        params['node_id'] = node_id
+        params["node_id"] = node_id
         query = self.repository.get_query().filter_by(**params)
         try:
-            return self.repository.first(query)
+            result = self.repository.first(query)
+            logging.info(f"File retrieved: {result}")
+            return result
         except SQLAlchemyError as e:
-            print(f"Error retrieving file: {e}")
+            logging.error(f"Error retrieving file: {e}")
             return None
 
     def get_by_tags(self, ids: List[int]) -> List[File]:
@@ -42,6 +47,7 @@ class FileService:
 
     def create(self, input: FileInputDto) -> FileOutputDto | None:
         """Create a new file with the given input DTO."""
+        logging.info(f"Creating file with input: {input}")
         key = hash(input.name)
         node_id = self.hash_service.get_node_id(key)
         if node_id is None:
@@ -57,15 +63,17 @@ class FileService:
             node_id=node_id,
         )
         try:
-            file_dto = self.repository.create(file, FileOutputDto._to_dto)
+            result = self.repository.create(file, FileOutputDto._to_dto)
+            logging.info(f"File created: {result}")
             self.replicate_file(file)
-            return file_dto
+            return result
         except SQLAlchemyError as e:
-            print(f"Error creating file: {e}")
+            logging.error(f"Error creating file: {e}")
             return None
 
     def update(self, id: int, input: FileInputDto) -> FileOutputDto | None:
         """Update an existing file by its ID."""
+        logging.info(f"Updating file with ID: {id} and input: {input}")
         file = self.repository.get(id)
         if file is None:
             return None
@@ -83,14 +91,17 @@ class FileService:
         file.update_date = input.update_date
         try:
             self.repository.update(file)
+            result = FileOutputDto._to_dto(file)
+            logging.info(f"File updated: {result}")
             self.replicate_file(file)
-            return FileOutputDto._to_dto(file)
+            return result
         except SQLAlchemyError as e:
-            print(f"Error updating file: {e}")
+            logging.error(f"Error updating file: {e}")
             return None
 
     def delete(self, id: int) -> None:
         """Delete a file by its ID."""
+        logging.info(f"Deleting file with ID: {id}")
         file = self.repository.get(id)
         if file:
             key = hash(file.name)
@@ -98,17 +109,19 @@ class FileService:
             if node_id is not None and file.node_id == node_id:
                 try:
                     self.repository.delete(file)
+                    logging.info(f"File deleted: {id}")
                     self.remove_replication(file)
                 except SQLAlchemyError as e:
-                    print(f"Error deleting file: {e}")
+                    logging.error(f"Error deleting file: {e}")
 
     def replicate_file(self, file: File) -> None:
         """Replicate the file to other nodes."""
+        logging.info(f"Replicating file: {file}")
         # Implement replication logic here
         pass
 
     def remove_replication(self, file: File) -> None:
         """Remove the file replication from other nodes."""
+        logging.info(f"Removing replication for file: {file}")
         # Implement replication removal logic here
         pass
-

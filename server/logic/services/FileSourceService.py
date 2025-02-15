@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from ..dtos import FileSourceInputDto, FileSourceOutputDto
 from ..business_data import FileSource, file_tags, Repository
@@ -6,13 +7,17 @@ from sqlalchemy.exc import SQLAlchemyError
 
 __all__ = ["FileSourceService"]
 
+
 class FileSourceService:
-    def __init__(self, repository: Repository[FileSource], hash_service: HashService) -> None:
+    def __init__(
+        self, repository: Repository[FileSource], hash_service: HashService
+    ) -> None:
         self.repository = repository
         self.hash_service = hash_service
 
     def get(self, input: FileSourceInputDto) -> FileSource | None:
         """Retrieve a file source based on the provided input DTO."""
+        logging.info(f"Getting file source with input: {input}")
         key = hash(input.url)
         node_id = self.hash_service.get_node_id(key)
         if node_id is None:
@@ -21,12 +26,14 @@ class FileSourceService:
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
-        params['node_id'] = node_id
+        params["node_id"] = node_id
         query = self.repository.get_query().filter_by(**params)
         try:
-            return self.repository.first(query)
+            result = self.repository.first(query)
+            logging.info(f"File source retrieved: {result}")
+            return result
         except SQLAlchemyError as e:
-            print(f"Error retrieving file source: {e}")
+            logging.error(f"Error retrieving file source: {e}")
             return None
 
     def get_all(self) -> List[FileSource]:
@@ -57,6 +64,7 @@ class FileSourceService:
 
     def create(self, input: FileSourceInputDto) -> FileSourceOutputDto | None:
         """Create a new file source with the given input DTO."""
+        logging.info(f"Creating file source with input: {input}")
         key = hash(input.url)
         node_id = self.hash_service.get_node_id(key)
         if node_id is None:
@@ -71,13 +79,16 @@ class FileSourceService:
             node_id=node_id,
         )
         try:
-            return self.repository.create(file_source, FileSourceOutputDto._to_dto)
+            result = self.repository.create(file_source, FileSourceOutputDto._to_dto)
+            logging.info(f"File source created: {result}")
+            return result
         except SQLAlchemyError as e:
-            print(f"Error creating file source: {e}")
+            logging.error(f"Error creating file source: {e}")
             return None
 
     def update(self, id: int, input: FileSourceInputDto) -> FileSourceOutputDto | None:
         """Update an existing file source by its ID."""
+        logging.info(f"Updating file source with ID: {id} and input: {input}")
         source = self.repository.get(id)
         if source is None:
             return None
@@ -94,13 +105,16 @@ class FileSourceService:
         source.update_date = input.update_date
         try:
             self.repository.update(source)
-            return FileSourceOutputDto._to_dto(source)
+            result = FileSourceOutputDto._to_dto(source)
+            logging.info(f"File source updated: {result}")
+            return result
         except SQLAlchemyError as e:
-            print(f"Error updating file source: {e}")
+            logging.error(f"Error updating file source: {e}")
             return None
 
     def delete(self, id: int) -> None:
         """Delete a file source by its ID."""
+        logging.info(f"Deleting file source with ID: {id}")
         source = self.repository.get(id)
         if source:
             key = hash(source.url)
@@ -108,5 +122,6 @@ class FileSourceService:
             if node_id is not None and source.node_id == node_id:
                 try:
                     self.repository.delete(source)
+                    logging.info(f"File source deleted: {id}")
                 except SQLAlchemyError as e:
-                    print(f"Error deleting file source: {e}")
+                    logging.error(f"Error deleting file source: {e}")

@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from ..dtos import TagInputDto, TagOutputDto
 from ..business_data import Tag, Repository, file_tags
@@ -6,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 __all__ = ["TagService"]
 
+
 class TagService:
     def __init__(self, repository: Repository[Tag], hash_service: HashService):
         self.repository = repository
@@ -13,6 +15,7 @@ class TagService:
 
     def get(self, input: TagInputDto) -> Tag | None:
         """Retrieve a tag based on the provided input DTO."""
+        logging.info(f"Getting tag with input: {input}")
         key = hash(input.name)
         node_id = self.hash_service.get_node_id(key)
         if node_id is None:
@@ -21,12 +24,14 @@ class TagService:
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
-        params['node_id'] = node_id
+        params["node_id"] = node_id
         query = self.repository.get_query().filter_by(**params)
         try:
-            return self.repository.first(query)
+            result = self.repository.first(query)
+            logging.info(f"Tag retrieved: {result}")
+            return result
         except SQLAlchemyError as e:
-            print(f"Error retrieving tag: {e}")
+            logging.error(f"Error retrieving tag: {e}")
             return None
 
     def get_by_query(self, query: List[str]) -> List[Tag]:
@@ -40,6 +45,7 @@ class TagService:
 
     def create(self, input: TagInputDto) -> TagOutputDto | None:
         """Create a new tag."""
+        logging.info(f"Creating tag with input: {input}")
         key = hash(input.name)
         node_id = self.hash_service.get_node_id(key)
         if node_id is None:
@@ -52,13 +58,16 @@ class TagService:
             node_id=node_id,
         )
         try:
-            return self.repository.create(tag, TagOutputDto._to_dto)
+            result = self.repository.create(tag, TagOutputDto._to_dto)
+            logging.info(f"Tag created: {result}")
+            return result
         except SQLAlchemyError as e:
-            print(f"Error creating tag: {e}")
+            logging.error(f"Error creating tag: {e}")
             return None
 
     def update(self, id: int, input: TagInputDto) -> TagOutputDto | None:
         """Update a tag by its ID."""
+        logging.info(f"Updating tag with ID: {id} and input: {input}")
         tag = self.repository.get(id)
         if tag is None:
             return None
@@ -73,13 +82,16 @@ class TagService:
         tag.update_date = input.update_date
         try:
             self.repository.update(tag)
-            return TagOutputDto._to_dto(tag)
+            result = TagOutputDto._to_dto(tag)
+            logging.info(f"Tag updated: {result}")
+            return result
         except SQLAlchemyError as e:
-            print(f"Error updating tag: {e}")
+            logging.error(f"Error updating tag: {e}")
             return None
 
     def delete(self, id: int) -> None:
         """Delete a tag by its ID."""
+        logging.info(f"Deleting tag with ID: {id}")
         tag = self.repository.get(id)
         if tag:
             key = hash(tag.name)
@@ -87,11 +99,13 @@ class TagService:
             if node_id is not None and tag.node_id == node_id:
                 try:
                     self.repository.delete(tag)
+                    logging.info(f"Tag deleted: {id}")
                 except SQLAlchemyError as e:
-                    print(f"Error deleting tag: {e}")
+                    logging.error(f"Error deleting tag: {e}")
 
     def delete_tags(self, file_id: int, tag_ids: List[int]) -> None:
         """Remove a tag from a specific file."""
+        logging.info(f"Deleting tags from file ID: {file_id} with tag IDs: {tag_ids}")
         with self.repository.get_session() as session:
             try:
                 query = file_tags.delete().where(
@@ -100,12 +114,14 @@ class TagService:
                 )
                 session.execute(query)
                 session.commit()
+                logging.info(f"Tags deleted from file ID: {file_id}")
             except SQLAlchemyError as e:
                 session.rollback()
-                print(f"Error deleting tags from file: {e}")
+                logging.error(f"Error deleting tags from file: {e}")
 
     def add_tag(self, file_id: int, tag_id: int) -> None:
         """Add a tag to a file if it doesn't already have it."""
+        logging.info(f"Adding tag ID: {tag_id} to file ID: {file_id}")
         params = {"file_id": file_id, "tag_id": tag_id}
         with self.repository.get_session() as session:
             try:
@@ -115,6 +131,7 @@ class TagService:
                     query = file_tags.insert().values(**params)
                     session.execute(query)
                 session.commit()
+                logging.info(f"Tag ID: {tag_id} added to file ID: {file_id}")
             except SQLAlchemyError as e:
                 session.rollback()
-                print(f"Error adding tag to file: {e}")
+                logging.error(f"Error adding tag to file: {e}")
