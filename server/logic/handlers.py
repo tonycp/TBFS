@@ -1,6 +1,7 @@
-import json
-import logging
-from typing import Callable, Any, Dict, Optional, Tuple, List
+import json, logging
+from typing import Callable, Any, Dict, Optional, Tuple
+
+__all__ = ["handlers", "handle_request", "Create", "Update", "Delete", "Get", "GetAll"]
 
 handlers: Dict[
     str, Tuple[Callable[[Dict[str, Any]], str], Dict[str, Callable[[Any], bool]]]
@@ -8,17 +9,16 @@ handlers: Dict[
 
 
 def _load_data(
-    data: List[bytes], dataset: Dict[str, Callable[[Any], bool]]
+    data: Dict[str, Any], dataset: Dict[str, Callable[[Any], bool]]
 ) -> Dict[str, Any]:
-    """Load the data from the message into a dictionary."""
-    try:
-        data_dict: Dict[str, Any] = json.loads(data[0].decode("utf-8"))
-    except (IndexError, json.JSONDecodeError) as e:
-        raise ValueError(f"Invalid data format: {e}")
+    """Load and validate the data from the message into a dictionary."""
+    validated_errors = [k for k, v in dataset.items() if not v(data.get(k))]
+    if validated_errors:
+        raise ValueError(f"Invalid data: {validated_errors}")
 
     result = {}
     for key, value_type in dataset.items():
-        value = data_dict.get(key)
+        value = data.get(key)
         if value is None:
             raise ValueError(f"Missing required key: {key}")
         try:
@@ -32,7 +32,7 @@ def _load_data(
     return result
 
 
-def handle_request(header: Tuple[str, str, Dict[str, Any]]) -> Any:
+def handle_request(header: Tuple[str, str, Dict[str, Any]]) -> str:
     """Handle incoming requests and route them to the appropriate handler."""
     try:
         command_name, func_name, data = header
@@ -50,7 +50,7 @@ def handle_request(header: Tuple[str, str, Dict[str, Any]]) -> Any:
         return handler_func(**_load_data(data, dataset))
     except Exception as e:
         logging.error(f"Error handling request: {e}")
-        return {"error": str(e)}
+        return json.dumps({"error": str(e)})
 
 
 def create_handler(
@@ -65,15 +65,7 @@ def create_handler(
         handlers[index] = (func, dataset)
 
         def wrapper(data: Dict[str, Any]) -> str:
-            try:
-                validated_errors = [k for k, v in dataset.items() if not v(data[k])]
-                if validated_errors:
-                    raise ValueError(f"Invalid data: {validated_errors}")
-
-                result = func(**data)
-                return json.dumps(result)
-            except Exception as e:
-                return json.dumps({"error": str(e)})
+            return json.dumps(func(**data))
 
         return wrapper
 
