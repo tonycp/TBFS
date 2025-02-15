@@ -1,5 +1,5 @@
 import logging, logging.handlers as handlers
-from logic import start_listening
+from logic import start_server
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,7 +16,7 @@ logging.basicConfig(
 if __name__ == "__main__":
     try:
         logging.info("Starting the server...")
-        start_listening()
+        start_server()
     except KeyboardInterrupt as e:
         logging.warning("Stopping the server...")
     except Exception as e:
