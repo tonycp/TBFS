@@ -8,14 +8,14 @@ from sqlalchemy import (
     Table,
     UniqueConstraint,
     CheckConstraint,
+    Integer,
+    BigInteger,
 )
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 from datetime import datetime, timezone
 
-
 class Base(DeclarativeBase):
     pass
-
 
 file_tags = Table(
     "file_tags",
@@ -24,19 +24,18 @@ file_tags = Table(
     Column("tag_id", ForeignKey("tags.id"), primary_key=True),
 )
 
-
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(30), nullable=False)
-    is_connected: Mapped[bool] = mapped_column(default=False, nullable=False)
     creation_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     files: Mapped[List[File]] = relationship(
         back_populates="user",
@@ -48,8 +47,7 @@ class User(Base):
     )
 
     def __repr__(self) -> str:
-        return f"User(id={self.id!r}, name={self.name!r}, is_connected={self.is_connected!r})"
-
+        return f"User(id={self.id!r}, name={self.name!r})"
 
 class File(Base):
     __tablename__ = "files"
@@ -65,6 +63,7 @@ class File(Base):
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
@@ -92,14 +91,12 @@ class File(Base):
     def __repr__(self) -> str:
         return f"File(id={self.id!r}, name={self.name!r}, file_type={self.file_type!r}, size={self.size!r})"
 
-
 class FileSource(Base):
     __tablename__ = "file_sources"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     file_id: Mapped[int] = mapped_column(ForeignKey("files.id"))
     chunk_size: Mapped[int] = mapped_column(nullable=False)
-    chunk_number: Mapped[int] = mapped_column(nullable=False)
     url: Mapped[str] = mapped_column(String(255), nullable=False)
 
     creation_date: Mapped[datetime] = mapped_column(
@@ -108,6 +105,7 @@ class FileSource(Base):
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     file: Mapped[File] = relationship(
         back_populates="sources",
@@ -116,8 +114,7 @@ class FileSource(Base):
     )
 
     def __repr__(self) -> str:
-        return f"FileSource(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, chunk_number={self.chunk_number!r}, url={self.url!r})"
-
+        return f"FileSource(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, url={self.url!r})"
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -131,6 +128,7 @@ class Tag(Base):
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     files: Mapped[List[File]] = relationship(
         secondary=file_tags,
@@ -143,3 +141,13 @@ class Tag(Base):
 
     def __repr__(self) -> str:
         return f"Tag(id={self.id!r}, name={self.name!r})"
+
+class HashTable(Base):
+    __tablename__ = "hash_table"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    key: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"HashTable(id={self.id!r}, key={self.key!r}, node_id={self.node_id!r})"
