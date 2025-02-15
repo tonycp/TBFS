@@ -46,38 +46,35 @@ def _solver_request(header_str: str) -> str:
     return handle_request((command_name, func_name, dataset))
 
 
+def _process_request(socket: zmq.Socket) -> None:
+    try:
+        message = socket.recv_multipart(flags=zmq.NOBLOCK)
+        decode = message[0].decode("utf-8")
+
+        last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT).decode("utf-8")
+        logging.info(f"Received a message from: {last_endpoint}")
+
+        result = _solver_request(decode)
+        logging.info(f"Result: {result}")
+
+        socket.send_multipart([result.encode("utf-8")])
+        logging.info(f"Response sent to: {last_endpoint}")
+    except ValueError as e:
+        logging.error(f"Error processing message: {e}")
+
+        socket.send_multipart([json.dumps({"error": str(e)}).encode("utf-8")])
+        logging.info(f"Error sent to: {last_endpoint}")
+    except zmq.Again:
+        pass
+
+
 def _start_listening(poller: zmq.Poller) -> None:
     while True:
         time.sleep(0.01)
         events = poller.poll()
         for socket_event, event in events:
-            if event != zmq.POLLIN:
-                continue
-
-            socket_event: zmq.Socket
-            try:
-                message = socket_event.recv_multipart(flags=zmq.NOBLOCK)
-                decode = message[0].decode("utf-8")
-
-                last_endpoint = socket_event.getsockopt(zmq.LAST_ENDPOINT).decode(
-                    "utf-8"
-                )
-                logging.info(f"Received a message from: {last_endpoint}")
-
-                result = _solver_request(decode)
-                logging.info(f"Result: {result}")
-
-                socket_event.send_multipart([result.encode("utf-8")])
-                logging.info(f"Response sent to: {last_endpoint}")
-            except ValueError as e:
-                logging.error(f"Error processing message: {e}")
-
-                socket_event.send_multipart(
-                    [json.dumps({"error": str(e)}).encode("utf-8")]
-                )
-                logging.info(f"Error sent to: {last_endpoint}")
-            except zmq.Again:
-                continue
+            if event == zmq.POLLIN:
+                _process_request(socket_event)
 
 
 def start_server() -> None:
