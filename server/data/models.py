@@ -38,7 +38,6 @@ class User(Base):
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
-    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     files: Mapped[List[File]] = relationship(
         back_populates="user",
@@ -67,7 +66,6 @@ class File(Base):
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
-    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
@@ -110,7 +108,6 @@ class FileSource(Base):
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
-    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     file: Mapped[File] = relationship(
         back_populates="sources",
@@ -134,7 +131,6 @@ class Tag(Base):
     update_date: Mapped[datetime] = mapped_column(
         default=datetime.now(timezone.utc), nullable=False
     )
-    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     files: Mapped[List[File]] = relationship(
         secondary=file_tags,

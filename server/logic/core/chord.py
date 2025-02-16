@@ -1,8 +1,8 @@
+from __future__ import annotations
+from typing import List, Optional, Dict, Union
+
 import multiprocessing, threading, zmq
 import time, logging, os
-
-from typing import List, Optional, Dict, Union
-from __future__ import annotations
 
 from .chord_reference import ChordReference, in_between
 from .server import Server
@@ -10,7 +10,15 @@ from .const import *
 
 __all__ = ["ChordNode"]
 
+
 class ChordNode(Server, ChordReference):
+    _successor: ChordReference
+    _predecessor: Optional[ChordReference]
+    _leader: Optional[ChordReference]
+    _im_the_leader: bool
+    _in_election: bool
+    _is_alive: bool
+
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
         ChordNode._check_default(config or {})
         Server.__init__(self, config)
@@ -40,6 +48,53 @@ class ChordNode(Server, ChordReference):
         for key, value in default_config.items():
             config.setdefault(key, value)
         return config
+
+    # region Properties Methods
+    @property
+    def successor(self) -> ChordReference:
+        return self._successor
+
+    @property
+    def predecessor(self) -> ChordReference:
+        return self._predecessor
+
+    @property
+    def leader(self) -> ChordReference:
+        return self._leader
+
+    @property
+    def im_the_leader(self) -> bool:
+        return self._im_the_leader
+
+    @property
+    def in_election(self) -> bool:
+        return self._in_election
+
+    @property
+    def is_alive(self) -> bool:
+        return self._is_alive
+
+    @successor.setter
+    def successor(self, node: ChordReference):
+        self._successor = node
+
+    @predecessor.setter
+    def predecessor(self, node: ChordReference):
+        self._predecessor = node
+
+    @leader.setter
+    def leader(self, node: ChordReference):
+        self._leader = node
+
+    @im_the_leader.setter
+    def im_the_leader(self, value: bool):
+        self._im_the_leader = value
+
+    @in_election.setter
+    def in_election(self, value: bool):
+        self._in_election = value
+
+    # endregion
 
     # region Finding Methods
     def _closest_preceding_node(self, node_id: int) -> ChordReference:

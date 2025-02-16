@@ -2,29 +2,21 @@ import logging
 from typing import List
 from ..dtos import TagInputDto, TagOutputDto
 from ..business_data import Tag, Repository, file_tags
-from .HashService import HashService
 from sqlalchemy.exc import SQLAlchemyError
 
 __all__ = ["TagService"]
 
 
 class TagService:
-    def __init__(self, repository: Repository[Tag], hash_service: HashService):
+    def __init__(self, repository: Repository[Tag]):
         self.repository = repository
-        self.hash_service = hash_service
 
     def get(self, input: TagInputDto) -> Tag | None:
         """Retrieve a tag based on the provided input DTO."""
         logging.info(f"Getting tag with input: {input}")
-        key = hash(input.name)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None:
-            return None
-
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
-        params["node_id"] = node_id
         query = self.repository.get_query().filter_by(**params)
         try:
             result = self.repository.first(query)
@@ -46,16 +38,10 @@ class TagService:
     def create(self, input: TagInputDto) -> TagOutputDto | None:
         """Create a new tag."""
         logging.info(f"Creating tag with input: {input}")
-        key = hash(input.name)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None:
-            return None
-
         tag = Tag(
             name=input.name,
             creation_date=input.creation_date,
             update_date=input.update_date,
-            node_id=node_id,
         )
         try:
             result = self.repository.create(tag, TagOutputDto._to_dto)
@@ -70,11 +56,6 @@ class TagService:
         logging.info(f"Updating tag with ID: {id} and input: {input}")
         tag = self.repository.get(id)
         if tag is None:
-            return None
-
-        key = hash(input.name)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None or tag.node_id != node_id:
             return None
 
         tag.name = input.name
@@ -94,14 +75,11 @@ class TagService:
         logging.info(f"Deleting tag with ID: {id}")
         tag = self.repository.get(id)
         if tag:
-            key = hash(tag.name)
-            node_id = self.hash_service.get_node_id(key)
-            if node_id is not None and tag.node_id == node_id:
-                try:
-                    self.repository.delete(tag)
-                    logging.info(f"Tag deleted: {id}")
-                except SQLAlchemyError as e:
-                    logging.error(f"Error deleting tag: {e}")
+            try:
+                self.repository.delete(tag)
+                logging.info(f"Tag deleted: {id}")
+            except SQLAlchemyError as e:
+                logging.error(f"Error deleting tag: {e}")
 
     def delete_tags(self, file_id: int, tag_ids: List[int]) -> None:
         """Remove a tag from a specific file."""

@@ -1,7 +1,7 @@
-import zmq, hashlib, json
-
 from __future__ import annotations
 from typing import Optional, Dict, Any, Union
+
+import zmq, hashlib, json
 
 from .server import Server
 from .const import *

@@ -1,5 +1,5 @@
 import logging, logging.handlers as handlers
-from logic import start_server
+from logic import ChordNode
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,9 +14,10 @@ logging.basicConfig(
 
 
 if __name__ == "__main__":
+    server = ChordNode()
     try:
         logging.info("Starting the server...")
-        start_server()
+        server.run()
     except KeyboardInterrupt as e:
         logging.warning("Stopping the server...")
     except Exception as e:

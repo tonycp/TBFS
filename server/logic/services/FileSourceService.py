@@ -2,7 +2,6 @@ import logging
 from typing import List
 from ..dtos import FileSourceInputDto, FileSourceOutputDto
 from ..business_data import FileSource, file_tags, Repository
-from .HashService import HashService
 from sqlalchemy.exc import SQLAlchemyError
 
 __all__ = ["FileSourceService"]
@@ -10,23 +9,16 @@ __all__ = ["FileSourceService"]
 
 class FileSourceService:
     def __init__(
-        self, repository: Repository[FileSource], hash_service: HashService
+        self, repository: Repository[FileSource]
     ) -> None:
         self.repository = repository
-        self.hash_service = hash_service
 
     def get(self, input: FileSourceInputDto) -> FileSource | None:
         """Retrieve a file source based on the provided input DTO."""
         logging.info(f"Getting file source with input: {input}")
-        key = hash(input.url)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None:
-            return None
-
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
-        params["node_id"] = node_id
         query = self.repository.get_query().filter_by(**params)
         try:
             result = self.repository.first(query)
@@ -65,18 +57,12 @@ class FileSourceService:
     def create(self, input: FileSourceInputDto) -> FileSourceOutputDto | None:
         """Create a new file source with the given input DTO."""
         logging.info(f"Creating file source with input: {input}")
-        key = hash(input.url)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None:
-            return None
-
         file_source = FileSource(
             file_id=input.file_id,
             chunk_size=input.chunk_size,
             url=input.url,
             creation_date=input.creation_date,
             update_date=input.update_date,
-            node_id=node_id,
         )
         try:
             result = self.repository.create(file_source, FileSourceOutputDto._to_dto)
@@ -91,11 +77,6 @@ class FileSourceService:
         logging.info(f"Updating file source with ID: {id} and input: {input}")
         source = self.repository.get(id)
         if source is None:
-            return None
-
-        key = hash(input.url)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None or source.node_id != node_id:
             return None
 
         source.file_id = input.file_id
@@ -117,11 +98,8 @@ class FileSourceService:
         logging.info(f"Deleting file source with ID: {id}")
         source = self.repository.get(id)
         if source:
-            key = hash(source.url)
-            node_id = self.hash_service.get_node_id(key)
-            if node_id is not None and source.node_id == node_id:
-                try:
-                    self.repository.delete(source)
-                    logging.info(f"File source deleted: {id}")
-                except SQLAlchemyError as e:
-                    logging.error(f"Error deleting file source: {e}")
+            try:
+                self.repository.delete(source)
+                logging.info(f"File source deleted: {id}")
+            except SQLAlchemyError as e:
+                logging.error(f"Error deleting file source: {e}")

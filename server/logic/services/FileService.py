@@ -2,29 +2,21 @@ import logging
 from typing import List
 from ..dtos import FileInputDto, FileOutputDto
 from ..business_data import File, file_tags, Repository
-from .HashService import HashService
 from sqlalchemy.exc import SQLAlchemyError
 
 __all__ = ["FileService"]
 
 
 class FileService:
-    def __init__(self, repository: Repository[File], hash_service: HashService):
+    def __init__(self, repository: Repository[File]):
         self.repository = repository
-        self.hash_service = hash_service
 
     def get(self, input: FileInputDto) -> File | None:
         """Retrieve a file based on the provided input DTO."""
         logging.info(f"Getting file with input: {input}")
-        key = hash(input.name)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None:
-            return None
-
         params = {
             key: value for key, value in input.to_dict().items() if value is not None
         }
-        params["node_id"] = node_id
         query = self.repository.get_query().filter_by(**params)
         try:
             result = self.repository.first(query)
@@ -48,11 +40,6 @@ class FileService:
     def create(self, input: FileInputDto) -> FileOutputDto | None:
         """Create a new file with the given input DTO."""
         logging.info(f"Creating file with input: {input}")
-        key = hash(input.name)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None:
-            return None
-
         file = File(
             name=input.name,
             file_type=input.file_type,
@@ -60,7 +47,6 @@ class FileService:
             user_id=input.user_id,
             creation_date=input.creation_date,
             update_date=input.update_date,
-            node_id=node_id,
         )
         try:
             result = self.repository.create(file, FileOutputDto._to_dto)
@@ -76,11 +62,6 @@ class FileService:
         logging.info(f"Updating file with ID: {id} and input: {input}")
         file = self.repository.get(id)
         if file is None:
-            return None
-
-        key = hash(input.name)
-        node_id = self.hash_service.get_node_id(key)
-        if node_id is None or file.node_id != node_id:
             return None
 
         file.name = input.name
@@ -104,15 +85,12 @@ class FileService:
         logging.info(f"Deleting file with ID: {id}")
         file = self.repository.get(id)
         if file:
-            key = hash(file.name)
-            node_id = self.hash_service.get_node_id(key)
-            if node_id is not None and file.node_id == node_id:
-                try:
-                    self.repository.delete(file)
-                    logging.info(f"File deleted: {id}")
-                    self.remove_replication(file)
-                except SQLAlchemyError as e:
-                    logging.error(f"Error deleting file: {e}")
+            try:
+                self.repository.delete(file)
+                logging.info(f"File deleted: {id}")
+                self.remove_replication(file)
+            except SQLAlchemyError as e:
+                logging.error(f"Error deleting file: {e}")
 
     def replicate_file(self, file: File) -> None:
         """Replicate the file to other nodes."""
