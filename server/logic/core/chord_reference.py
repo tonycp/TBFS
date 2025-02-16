@@ -35,18 +35,12 @@ class ChordReference:
     def _hash_key(key: str) -> int:
         return int(hashlib.sha1(key.encode("utf-8")).hexdigest(), 16)
 
-    @staticmethod
-    def _inbetween(k: int, start: int, end: int) -> bool:
+    def in_between(self, start: int, end: int) -> bool:
         """Check if an id is between two other ids in the Chord ring."""
         if start < end:
-            return start < k <= end
+            return start < self.id <= end
         else:
-            return start < k or k <= end
-
-    def _check_predecessor(self) -> bool:
-        if self.predecessor and not ChordReference.is_alive(self.predecessor):
-            self.predecessor = None
-        return self.predecessor is None
+            return start < self.id or self.id <= end
 
     # region Properties Methods
     @property
@@ -68,6 +62,10 @@ class ChordReference:
     @property
     def in_election(self) -> bool:
         return self._get_property(__name__)
+
+    @property
+    def is_alive(self) -> bool:
+        return self._ping_pong()
 
     @successor.setter
     def successor(self, node: ChordReference):
@@ -159,7 +157,7 @@ class ChordReference:
 
         return response
 
-    def is_alive(self) -> bool:
+    def _ping_pong(self) -> bool:
         try:
             context = zmq.Context()
             socket = context.socket(zmq.REQ)

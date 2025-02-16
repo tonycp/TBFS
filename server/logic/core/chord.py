@@ -1,32 +1,30 @@
-from __future__ import annotations
-import os
-from typing import List, Optional, Dict, Any, Union
-import threading, hashlib, time, zmq, json, logging
+import multiprocessing, threading, zmq
+import time, logging, os
 
-from .handlers import handle_request
+from typing import List, Optional, Dict, Union
+from __future__ import annotations
+
 from .server import Server
 from .chord_reference import ChordReference
+from .const import *
 
 __all__ = ["ChordNode"]
-
-SHA_1 = 160
 
 
 class ChordNode(Server, ChordReference):
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
         ChordNode._check_default(config or {})
+        Server.__init__(self, config)
+
         self.successor: ChordReference = self
+        self.leader: Optional[ChordReference] = None
         self.predecessor: Optional[ChordReference] = None
         self.finger_table: List[Optional[ChordReference]] = [self] * SHA_1
-        self.in_election = False
-        self.work_done = True
-        self.leader = None
-        self.its_me = False
+        self.im_the_leader: bool = True
+        self.in_election: bool = False
 
-        address = f"{config['protocol']}://{config['host']}:{config['port']}"
-        ChordReference.__init__(self, address)
-        Server.__init__(self, config)
-        threading.Thread(target=self._election_loop).start()
+        chord_ref = ChordReference.get_config(self._config, self.context)
+        ChordReference.__init__(self, **chord_ref)
 
     @staticmethod
     def _check_default(
@@ -34,163 +32,225 @@ class ChordNode(Server, ChordReference):
     ) -> Dict[str, Optional[Union[str, int]]]:
         """Check and set default values for the configuration."""
         Server._check_default(config)
-        key, value = "chord_port", int(os.getenv("CHORD_PORT", 5556))
-        config.setdefault(key, value)
+
+        default_config = {
+            NODE_PORT_KEY: int(os.getenv(NODE_PORT_ENV_KEY, DEFAULT_NODE_PORT)),
+            MCAST_ADDR_KEY: os.getenv(MCAST_ADDR_ENV_KEY, DEFAULT_MCAST_ADDR),
+        }
+
+        for key, value in default_config.items():
+            config.setdefault(key, value)
         return config
 
-    def _closest_preceding_node(self, key: int) -> ChordReference:
+    # region Finding Methods
+    def _closest_preceding_node(self, node_id: int) -> ChordReference:
         for finger_node in reversed(self.finger_table):
-            if finger_node and self.node_id < finger_node.node_id < key:
+            if finger_node and self.in_between(finger_node.id, node_id):
                 return finger_node
         return self
 
-    def _find_successor(self, key: int) -> ChordReference:
-        if self.successor == self:
+    def _find_successor(self, node_id: int) -> ChordReference:
+        if self.id == node_id:
             return self
-        if self.node_id < key <= self.successor.node_id:
-            return self.successor
-        else:
-            node = self._closest_preceding_node(key)
-            return self if node == self else node._find_successor(key)
 
-    def _find_predecessor(self, key: int) -> ChordReference:
+        if self.in_between(node_id, self.successor.id):
+            return self.successor
+
+        node = self._closest_preceding_node(node_id)
+        if node != self:
+            return node._find_successor(node_id)
+        return self.successor
+
+    def _find_predecessor(self, node_id: int) -> ChordReference:
         node = self
-        while not (node.node_id < key <= node.successor.node_id):
-            node = node._closest_preceding_node(key)
+        while not node.in_between(node_id, node.successor.id):
+            node = node.successor
         return node
 
-    def _update_others(self):
-        for i in range(SHA_1):
-            pred = self._find_predecessor((self.node_id - 2**i) % (2**SHA_1))
-            pred._update_finger_table(self, i)
+    # endregion
 
-    def _update_finger_table(self, s: ChordReference, i: int):
-        if (
-            self.finger_table[i] is None
-            or self.node_id <= s.node_id < self.finger_table[i].node_id
-        ):
-            self.finger_table[i] = s
-            pred = self.predecessor
-            if pred:
-                pred._update_finger_table(s, i)
+    # region Notification Methods
+    def adopt_leader(self, node: Optional[ChordReference] = None):
+        self.leader = node or self
+        self.im_the_leader = node is self
 
-    def _init_finger_table(self, existing_node: ChordReference):
-        self.finger_table[0] = existing_node._find_successor(self.node_id)
-        self.predecessor = self.finger_table[0].predecessor
-        self.finger_table[0].predecessor = self
-        for i in range(1, SHA_1):
-            start = (self.node_id + 2**i) % (2**SHA_1)
-            if self.node_id <= self.finger_table[i - 1].node_id < start:
-                self.finger_table[i] = self.finger_table[i - 1]
-            else:
-                self.finger_table[i] = existing_node._find_successor(start)
+    def join(self, node: Optional[ChordReference] = None):
+        if node:
+            logging.info(f"❕ Joining to {node.id}...")
+            if not node.check_node():
+                raise Exception(f"There is no node using the address {node.ip}")
 
-    def _notify(self, node: ChordReference):
-        if self.predecessor is None or (
-            self.predecessor.node_id < node.node_id < self.node_id
-        ):
+            self.predecessor = None
+            self.successor = node._find_successor(self.id)
+            self.adopt_leader(node.leader)
+
+            if self.successor.id == self.successor.successor.id:
+                self.predecessor = self.successor
+                # self.predpred = self.ref
+                self.successor.not_alone_notify(self)
+        else:
+            logging.info("❕ Joining as the first node...")
+            self.successor = self
+            self.predecessor = None
+            # self.predpred = None
+            self.adopt_leader()
+
+        logging.info(f"✔️ Node {self.id} joined the network")
+
+    def notify(self, node: ChordReference):
+        logging.info(f"❕ Notifying {node.id}...")
+        if node.id == self.id:
+            return
+
+        if self.predecessor is None:
             self.predecessor = node
 
+            # self.pred = node
+            # self.predpred = node.pred
+            # self.update_replication(False, True)
+
+            # pull replication to predecessor
+        elif node.is_alive and self.predecessor.in_between(node.id, self.id):
+            self.predecessor = node
+
+            # self.predpred = self.pred
+            # self.pred = node
+            # self.update_replication(True, False)
+
+            # push replication delegation to predecessor
+
+        logging.info(f"✔️ Node {node.id} notified {self.id}")
+
+    def reverse_notify(self, node: ChordReference):
+        logging.info(f"❕ Reversing notifying {node.id}...")
+
+        self.successor = node
+
+        logging.info(f"✔️ Node {node.id} reversed notified {self.id}")
+
+    def not_alone_notify(self, node: ChordReference):
+        logging.info(f"❕ Notifying {node.id} that I am not alone...")
+
+        self.successor = node
+        self.predecessor = node
+        # Update replication with new successor
+        # self.update_replication(delegate_data=True, case_2=True)
+
+        logging.info(f"✔️ Node {node.id} notified {self.id} that I am not alone")
+
+    # endregion
+
+    # region Broadcast Methods
+    def zmq_PUB(self, header: str, data: str, mcast_addr: str, port: int):
+        message = [header.encode("utf-8"), data.encode("utf-8")]
+        s = self.context.socket(zmq.PUB)
+        s.bind(f"tcp://{mcast_addr}:{port}")
+        s.send_multipart(message)
+        s.close()
+
+    def send_PUB_message(self, header, data):
+        mcast_addr = self._config[MCAST_ADDR_KEY]
+        port = self._config[PORT_KEY]
+        func = self.zmq_PUB
+        multiprocessing.Process(
+            target=func, args=(header, data, mcast_addr, port)
+        ).start()
+
+    # endregion
+
+    # region Threading Methods
     def _stabilize(self):
-        if self.successor is None or not ChordNode._is_alive(self.successor):
-            return
-        x = self.successor.predecessor
-        if x and self.node_id < x.node_id < self.successor.node_id:
-            self.successor = x
-        self.successor._notify(self)
-
-    def _fix_fingers(self):
-        for i in range(SHA_1):
-            start = (self.node_id + 2**i) % (2**SHA_1)
-            self.finger_table[i] = self._find_successor(start)
-
-    def _run(self):
         while True:
-            try:
-                ChordNode._check_predecessor(self)
-                self._stabilize()
-                self._fix_fingers()
-                Server._start_listening(self)
-                time.sleep(1)
-            except Exception as e:
-                logging.error(f"Error in _run: {e}")
+            if self.successor is self:
+                time.sleep(WAIT_CHECK * STABLE_MOD)
+                continue
 
-    def _handle_chord_request(self, func_name: str, data: Dict[str, Any]) -> str:
-        """Handle requests specific to ChordNode."""
-        if func_name == "find_successor":
-            key = data.get("key")
-            return json.dumps(self._find_successor(key).address)
-        elif func_name == "election":
-            self._handle_election_message(data)
-            return json.dumps({"status": "election message received"})
-        # ...handle other ChordNode methods...
-        return json.dumps({"error": "Unknown ChordNode function"})
+            logging.info("🔵 Checking stability...")
+            if self.successor.is_alive:
+                x = self.successor.predecessor
+                if x.id != self.id:
+                    logging.warning(f"🟡 Stabilizing: {self.id} -> {x.id}")
+                    if x and self.in_between(x.id, self.successor.id):
+                        self.successor = x
 
-    def _handle_election_message(self, data: Dict[str, Any]):
-        node_id = data.get("node_id")
-        if node_id > self.node_id:
-            self.in_election = False
-            self._send_message(
-                self.successor.address, {"type": "election", "node_id": node_id}
-            )
-        elif node_id < self.node_id:
-            self._send_message(
-                self.successor.address, {"type": "election", "node_id": self.node_id}
-            )
-        else:
-            self.leader = self
-            self.its_me = True
-            self.in_election = False
-            self._send_message(
-                self.successor.address, {"type": "leader", "node_id": self.node_id}
-            )
+                        # pull replication to successor
 
-    def _handle_leader_message(self, data: Dict[str, Any]):
-        node_id = data.get("node_id")
-        self.leader = self._find_node_by_id(node_id)
-        self.in_election = False
-        self.its_me = False
-        self._send_message(
-            self.successor.address, {"type": "leader", "node_id": node_id}
-        )
+                    self.successor.notify(self)
+                else:
+                    logging.info("🟢 Stabilized")
+            else:
+                logging.error("🔴 No successor found, waiting for predecesor check...")
+            time.sleep(WAIT_CHECK * STABLE_MOD)
 
-    def _find_node_by_id(self, node_id: int) -> Optional[ChordReference]:
-        for node in self.finger_table:
-            if node and node.node_id == node_id:
-                return node
-        return None
+    def _check_predecessor(self):
+        while True:
+            if self.successor is self:
+                time.sleep(WAIT_CHECK * STABLE_MOD)
+                continue
 
-    def _send_message(self, address: str, message: Dict[str, Any]):
-        context = zmq.Context()
-        socket = context.socket(zmq.REQ)
-        socket.connect(address)
-        socket.send(json.dumps(message).encode("utf-8"))
-        socket.close()
+            logging.info("🔵 Checking predecessor...")
+            if self.predecessor:
+                if not self.predecessor.is_alive:
+                    logging.warning(f"🟡 Predecessor {self.predecessor.id} is dead")
+                else:
+                    logging.info(f"🟢 Predecessor {self.predecessor.id} is alive")
+            else:
+                logging.warning("🔴 No predecessor found")
+                self.predecessor = None
+                self.successor = self
+            time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def _election_loop(self):
+        socket = self.context.socket(zmq.SUB)
+        url = f"tcp://{self._config[HOST_KEY]}:{self._config[NODE_PORT_KEY]}"
+        self._connect_socket(socket, url, zmq.POLLIN)
+        socket.setsockopt_string(zmq.SUBSCRIBE, "")
+
+        start = Server.header_data(**ELECTION_COMMANDS[ELECTION.START])
+        winner = Server.header_data(**ELECTION_COMMANDS[ELECTION.WINNER])
+        data = {"id": self.id}
+
+        counter = 0
         while True:
-            if not self.in_election and not self.its_me:
-                self._start_election()
-            time.sleep(5)
+            if not self.leader and not self.in_election:
+                self.send_PUB_message(start, data)
+                logging.info("🔶 Starting leader election...")
+                self.in_election = True
+                self.leader = None
+            elif self.in_election:
+                counter += 1
+                if counter == ELECTION_TIMEOUT:
+                    if not self.leader and self.im_the_leader:
+                        self.im_the_leader = True
+                        self.leader = self.id
+                        self.in_election = False
+                        self.send_PUB_message(winner, data)
+                        logging.info(f"💠 I am the new leader")
+                    counter = 0
+                    self.in_election = False
+            else:
+                logging.info(f"🔷 Leader: {self.leader}")
+            logging.info(f"waiting... {counter}")
+            time.sleep(WAIT_CHECK * ELECTION_MOD)
 
-    def _start_election(self):
-        self.in_election = True
-        self.work_done = False
-        self.leader = None
-        self._send_election_message()
+    def _fix_fingers(self, remain: int = 0):
+        while True:
+            for i in range(remain, remain + BATCH_SIZE):
+                start = (self.id + 2**i) % (2**SHA_1)
+                self.finger_table[i] = self._find_successor(start)
+            remain = (remain + BATCH_SIZE) % SHA_1
+            time.sleep(WAIT_CHECK)
 
-    def _send_election_message(self):
-        for node in self.finger_table:
-            if node and node != self:
-                self._send_message(
-                    node.address, {"type": "election", "node_id": self.node_id}
-                )
+    # endregion
 
-    def join(self, existing_node: Optional[ChordReference] = None):
-        if existing_node:
-            self._init_finger_table(existing_node)
-            self._update_others()
-        else:
-            self.finger_table = [self] * SHA_1
-            self.predecessor = self
-        threading.Thread(target=self._election_loop).start()
+    def run(self):
+        Server.run(self)
+
+        # Start threads
+        threading.Thread(target=self._stabilize, daemon=True).start()
+        threading.Thread(target=self._check_predecessor, daemon=True).start()
+        threading.Thread(target=self._start_listening, daemon=True).start()
+        threading.Thread(target=self._election_loop, daemon=True).start()
+        threading.Thread(target=self._leader_checker, daemon=True).start()
+        threading.Thread(target=self.start_broadcast_server, daemon=True).start()
+        threading.Thread(target=self._fix_fingers, daemon=True).start()
