@@ -1,10 +1,19 @@
 from __future__ import annotations
-import json
 from typing import Optional, Dict, Any
-import zmq, hashlib, multiprocessing
+import zmq, hashlib, json
 
 from .server import Server
 from .const import *
+
+__all__ = ["ChordReference", "in_between"]
+
+
+def in_between(k: int, start: int, end: int) -> bool:
+    """Check if an id is between two other ids in the Chord ring."""
+    if start < end:
+        return start < k <= end
+    else:
+        return start < k or k <= end
 
 
 class ChordReference:
@@ -34,13 +43,6 @@ class ChordReference:
     @staticmethod
     def _hash_key(key: str) -> int:
         return int(hashlib.sha1(key.encode("utf-8")).hexdigest(), 16)
-
-    def in_between(self, start: int, end: int) -> bool:
-        """Check if an id is between two other ids in the Chord ring."""
-        if start < end:
-            return start < self.id <= end
-        else:
-            return start < self.id or self.id <= end
 
     # region Properties Methods
     @property
