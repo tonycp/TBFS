@@ -57,6 +57,17 @@ class Server:
         socket.bind(url)
         self.poller.register(socket, poller_flags)
         logging.info(f"Binding socket on {url}")
+    
+    def _connect_socket(
+        self,
+        socket: zmq.Socket,
+        url: str,
+        poller_flags: int = zmq.POLLOUT | zmq.POLLIN,
+    ) -> None:
+        """Connect the socket to the specified URL and register it with the poller."""
+        socket.connect(url)
+        self.poller.register(socket, poller_flags)
+        logging.info(f"Connected socket on {url}")
 
     def _solver_request(self, header_str: str) -> str:
         """Solve the request and return the result."""
