@@ -1,4 +1,5 @@
 import json, logging
+
 from typing import Callable, Any, Dict, Optional, Tuple
 
 __all__ = [
@@ -15,7 +16,6 @@ __all__ = [
 handlers: Dict[
     str, Tuple[Callable[[Dict[str, Any]], str], Dict[str, Callable[[Any], bool]]]
 ] = {}
-
 
 def _load_data(
     data: Dict[str, Any], dataset: Dict[str, Callable[[Any], bool]]
@@ -40,7 +40,6 @@ def _load_data(
 
     return result
 
-
 def handle_request(header: Tuple[str, str, Dict[str, Any]]) -> str:
     """Handle incoming requests and route them to the appropriate handler."""
     try:
@@ -61,7 +60,6 @@ def handle_request(header: Tuple[str, str, Dict[str, Any]]) -> str:
         logging.error(f"Error handling request: {e}")
         return json.dumps({"error": str(e)})
 
-
 def create_handler(
     command_name: str, dataset: Dict[str, Callable[[Any], bool]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
@@ -80,42 +78,35 @@ def create_handler(
 
     return handler
 
-
 def Create(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
     return create_handler("Create", dataset)
-
 
 def Update(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
     return create_handler("Update", dataset)
 
-
 def Delete(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
     return create_handler("Delete", dataset)
-
 
 def Get(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
     return create_handler("Get", dataset)
 
-
 def GetAll(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
     return create_handler("GetAll", dataset)
 
-
 def Chord(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
     return create_handler("Chord", dataset)
-
 
 def Election(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]

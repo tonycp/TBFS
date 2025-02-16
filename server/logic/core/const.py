@@ -32,13 +32,11 @@ STABLE_MOD = 2
 ELECTION_MOD = 0.1
 ELECTION_TIMEOUT = 10
 
-
 # Commands for the Chord protocol
 class ELECTION(Enum):
     START = 1
     WINNER = 2
     OK = 3
-
 
 ELECTION_COMMANDS = {
     ELECTION.START: {
@@ -58,13 +56,11 @@ ELECTION_COMMANDS = {
     },
 }
 
-
 class CHORD_DATA(Enum):
     GET_PROPERTY = 1
     SET_PROPERTY = 2
     FIND_CALL = 3
     NOTIFY_CALL = 4
-
 
 CHORD_DATA_COMMANDS = {
     CHORD_DATA.GET_PROPERTY: {

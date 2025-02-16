@@ -1,6 +1,7 @@
-from __future__ import annotations
-from typing import Optional, Dict, Any
 import zmq, hashlib, json
+
+from __future__ import annotations
+from typing import Optional, Dict, Any, Union
 
 from .server import Server
 from .const import *
@@ -22,13 +23,12 @@ def bully(id: int, other_id: int) -> bool:
 
 
 class ChordReference:
-
     def __init__(
         self,
         address: str,
         chord_port: int = DEFAULT_NODE_PORT,
         data_port: int = DEFAULT_DATA_PORT,
-        context=zmq.Context(),
+        context: zmq.Context = zmq.Context(),
     ):
         self.id = ChordReference._hash_key(address)
         self.address = address
@@ -37,7 +37,10 @@ class ChordReference:
         self.context = context
 
     @staticmethod
-    def get_config(config, context: zmq.Context = zmq.Context()) -> Dict[str, Any]:
+    def get_config(
+        config: Dict[str, Optional[Union[str, int]]],
+        context: zmq.Context = zmq.Context(),
+    ) -> Dict[str, Any]:
         return {
             "address": f"{config[PROTOCOL_KEY]}://{config[HOST_KEY]}",
             "chord_port": config[NODE_PORT_KEY],
@@ -109,19 +112,19 @@ class ChordReference:
     # endregion
 
     # region Notification Methods
-    def adopt_leader(self, node: Optional[ChordReference] = None):
+    def adopt_leader(self, node: Optional[ChordReference] = None) -> None:
         self._call_notify_methods(__name__, node)
 
-    def join(self, node: Optional[ChordReference] = None):
+    def join(self, node: Optional[ChordReference] = None) -> None:
         self._call_notify_methods(__name__, node)
 
-    def notify(self, node: ChordReference):
+    def notify(self, node: ChordReference) -> None:
         self._call_notify_methods(__name__, node)
 
-    def reverse_notify(self, node: ChordReference):
+    def reverse_notify(self, node: ChordReference) -> None:
         self._call_notify_methods(__name__, node)
 
-    def not_alone_notify(self, node: ChordReference):
+    def not_alone_notify(self, node: ChordReference) -> None:
         self._call_notify_methods(__name__, node)
 
     # endregion
@@ -144,12 +147,12 @@ class ChordReference:
         data = json.dumps({"property": property, "value": value})
         self._send_chord_message(CHORD_DATA.SET_PROPERTY, data)
 
-    def _get_chord_reference(self, property: str):
+    def _get_chord_reference(self, property: str) -> ChordReference:
         chord_port, data_port, context = self.chord_port, self.data_port, self.context
         response = self._get_property(property)
         return ChordReference(response, chord_port, data_port, context)
 
-    def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> str:
+    def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> Dict[str, Any]:
         header = Server.header_data(**CHORD_DATA_COMMANDS[chord_data])
         return self._zmq_call(header, data)
 

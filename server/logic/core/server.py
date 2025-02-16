@@ -1,4 +1,5 @@
 import os, time, zmq, json, logging, threading
+
 from typing import Any, Dict, Optional, Union, Tuple
 from dotenv import load_dotenv
 
@@ -6,7 +7,6 @@ from .handlers import handle_request
 from .const import *
 
 __all__ = ["Server"]
-
 
 class Server:
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
@@ -34,7 +34,7 @@ class Server:
         return config
 
     @staticmethod
-    def header_data(command, func: str, data: Dict[str, Any]) -> str:
+    def header_data(command: str, func: str, data: Dict[str, Any]) -> str:
         """Create a header string from the command name, function name, and dataset."""
         return json.dumps({"command_name": command, "function": func, "dataset": data})
 
@@ -96,7 +96,7 @@ class Server:
         except zmq.Again:
             pass
 
-    def _start_listening(self):
+    def _start_listening(self) -> None:
         """Start listening for incoming requests and process them."""
         while True:
             events = self.poller.poll()

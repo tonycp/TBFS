@@ -10,7 +10,6 @@ from .const import *
 
 __all__ = ["ChordNode"]
 
-
 class ChordNode(Server, ChordReference):
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
         ChordNode._check_default(config or {})
@@ -70,11 +69,11 @@ class ChordNode(Server, ChordReference):
     # endregion
 
     # region Notification Methods
-    def adopt_leader(self, node: Optional[ChordReference] = None):
+    def adopt_leader(self, node: Optional[ChordReference] = None) -> None:
         self.leader = node or self
         self.im_the_leader = node is self
 
-    def join(self, node: Optional[ChordReference] = None):
+    def join(self, node: Optional[ChordReference] = None) -> None:
         if node:
             logging.info(f"❕ Joining to {node.id}...")
             if not node.is_alive:
@@ -98,7 +97,7 @@ class ChordNode(Server, ChordReference):
 
         logging.info(f"✔️ Node {self.id} joined the network")
 
-    def notify(self, node: ChordReference):
+    def notify(self, node: ChordReference) -> None:
         logging.info(f"❕ Notifying {node.id}...")
 
         if node.id != self.id:
@@ -116,12 +115,12 @@ class ChordNode(Server, ChordReference):
 
         logging.info(f"✔️ Node {node.id} notified {self.id}")
 
-    def reverse_notify(self, node: ChordReference):
+    def reverse_notify(self, node: ChordReference) -> None:
         logging.info(f"❕ Reversing notifying {node.id}...")
         self.successor = node
         logging.info(f"✔️ Node {node.id} reversed notified {self.id}")
 
-    def not_alone_notify(self, node: ChordReference):
+    def not_alone_notify(self, node: ChordReference) -> None:
         logging.info(f"❕ Notifying {node.id} that I am not alone...")
 
         self.successor = node
@@ -135,14 +134,14 @@ class ChordNode(Server, ChordReference):
     # endregion
 
     # region Broadcast Methods
-    def zmq_PUB(self, header: str, data: str, mcast_addr: str, port: int):
+    def zmq_PUB(self, header: str, data: str, mcast_addr: str, port: int) -> None:
         message = [header.encode("utf-8"), data.encode("utf-8")]
         s = self.context.socket(zmq.PUB)
         s.bind(f"tcp://{mcast_addr}:{port}")
         s.send_multipart(message)
         s.close()
 
-    def send_PUB_message(self, header, data):
+    def send_PUB_message(self, header: str, data: str) -> None:
         mcast_addr = self._config[MCAST_ADDR_KEY]
         port = self._config[PORT_KEY]
         func = self.zmq_PUB
@@ -150,7 +149,7 @@ class ChordNode(Server, ChordReference):
             target=func, args=(header, data, mcast_addr, port)
         ).start()
 
-    def send_election_message(self, election: ELECTION):
+    def send_election_message(self, election: ELECTION) -> None:
         start = Server.header_data(**ELECTION_COMMANDS[election])
         data = {"id": self.id}
         return self.send_PUB_message(start, data)
@@ -158,7 +157,7 @@ class ChordNode(Server, ChordReference):
     # endregion
 
     # region Threading Methods
-    def _stabilize(self):
+    def _stabilize(self) -> None:
         while True:
             if self.successor.id != self.id:
                 time.sleep(WAIT_CHECK * STABLE_MOD)
@@ -184,7 +183,7 @@ class ChordNode(Server, ChordReference):
                 logging.error("🔴 No successor found, waiting for predecesor check...")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
-    def _check_predecessor(self):
+    def _check_predecessor(self) -> None:
         while True:
             if self.successor is self:
                 time.sleep(WAIT_CHECK * STABLE_MOD)
@@ -233,7 +232,7 @@ class ChordNode(Server, ChordReference):
                 logging.warning("🔴 No predecessor found")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
-    def _election_loop(self):
+    def _election_loop(self) -> None:
         socket = self.context.socket(zmq.SUB)
         url = f"tcp://{self._config[HOST_KEY]}:{self._config[NODE_PORT_KEY]}"
         self._connect_socket(socket, url, zmq.POLLIN)
@@ -262,7 +261,7 @@ class ChordNode(Server, ChordReference):
             logging.info(f"waiting... {counter}")
             time.sleep(WAIT_CHECK * ELECTION_MOD)
 
-    def _leader_checker(self):
+    def _leader_checker(self) -> None:
         while True:
             if self.leader:
                 if self.leader.is_alive:
@@ -272,7 +271,7 @@ class ChordNode(Server, ChordReference):
                     logging.error("🔶 Leader is dead")
             time.sleep(WAIT_CHECK * ELECTION_MOD)
 
-    def _fix_fingers(self, remain: int = 0):
+    def _fix_fingers(self, remain: int = 0) -> None:
         while True:
             for i in range(remain, remain + BATCH_SIZE):
                 start = (self.id + 2**i) % (2**SHA_1)
@@ -282,7 +281,7 @@ class ChordNode(Server, ChordReference):
 
     # endregion
 
-    def run(self):
+    def run(self) -> None:
         Server.run(self)
 
         # Start threads
