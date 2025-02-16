@@ -3,17 +3,19 @@ from typing import Any, Dict, Optional, Union, Tuple
 from dotenv import load_dotenv
 
 from .handlers import handle_request
+from .const import *
 
 __all__ = ["Server"]
 
 
 class Server:
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REP)
         self._config = self._check_default(config or {})
-        self._bind_socket()
-        threading.Thread(target=self._run).start()
+        url = f"{self._config[PROTOCOL_KEY]}://{self._config[HOST_KEY]}:{self._config[PORT_KEY]}"
+        self.poller = zmq.Poller()
+        self.context = zmq.Context()
+        socket = self.context.socket(zmq.REP)
+        self._bind_socket(socket, url, zmq.POLLIN)
 
     @staticmethod
     def _check_default(
@@ -22,39 +24,47 @@ class Server:
         """Check and set default values for the configuration."""
         load_dotenv()
         default_config: Dict[str, Optional[Union[str, int]]] = {
-            "protocol": os.getenv("PROTOCOL", "tcp"),
-            "host": os.getenv("HOST", "localhost"),
-            "port": int(os.getenv("PORT", 5555)),
+            PROTOCOL_KEY: os.getenv(PROTOCOL_ENV_KEY, DEFAULT_PROTOCOL),
+            HOST_KEY: os.getenv(HOST_ENV_KEY, DEFAULT_HOST),
+            PORT_KEY: int(os.getenv(PORT_ENV_KEY, DEFAULT_DATA_PORT)),
         }
 
         for key, value in default_config.items():
             config.setdefault(key, value)
         return config
 
-    def _bind_socket(self):
-        url = f"{self._config['protocol']}://{self._config['host']}:{self._config['port']}"
-        self.socket.bind(url)
+    @staticmethod
+    def header_data(command, func: str, data: Dict[str, Any]) -> str:
+        """Create a header string from the command name, function name, and dataset."""
+        return json.dumps({"command_name": command, "function": func, "dataset": data})
+
+    @staticmethod
+    def parse_header(header_str: str) -> Tuple[str, str, Dict[str, Any]]:
+        """Parse the header string and return the command name, function name, and dataset."""
+        if not header_str:
+            raise ValueError("Header is empty")
+
+        header: Dict[str, Any] = json.loads(header_str)
+        return header.get("command_name"), header.get("function"), header.get("dataset")
+
+    def _bind_socket(
+        self,
+        socket: zmq.Socket,
+        url: str,
+        poller_flags: int = zmq.POLLOUT | zmq.POLLIN,
+    ) -> None:
+        """Bind the socket to the specified URL and register it with the poller."""
+        socket.bind(url)
+        self.poller.register(socket, poller_flags)
         logging.info(f"Binding socket on {url}")
 
-    def _run(self):
-        while True:
-            try:
-                self._start_listening()
-                time.sleep(1)
-            except Exception as e:
-                logging.error(f"Error in _run: {e}")
-
-    def _start_listening(self):
-        poller = zmq.Poller()
-        poller.register(self.socket, zmq.POLLIN)
-        while True:
-            time.sleep(0.01)
-            events = poller.poll()
-            for socket_event, event in events:
-                if event == zmq.POLLIN:
-                    self._process_request(socket_event)
+    def _solver_request(self, header_str: str) -> str:
+        """Solve the request and return the result."""
+        command_name, func_name, dataset = Server.parse_header(header_str)
+        return handle_request((command_name, func_name, dataset))
 
     def _process_request(self, socket: zmq.Socket) -> None:
+        """Process incoming requests and send responses."""
         try:
             message = socket.recv_multipart(flags=zmq.NOBLOCK)
             decode = message[0].decode("utf-8")
@@ -75,20 +85,16 @@ class Server:
         except zmq.Again:
             pass
 
-    def _solver_request(self, header_str: str) -> str:
-        """Solve the request and return the result."""
-        command_name, func_name, dataset = self._parse_header(header_str)
-        return handle_request((command_name, func_name, dataset))
+    def _start_listening(self):
+        """Start listening for incoming requests and process them."""
+        while True:
+            events = self.poller.poll()
+            for socket_event, event in events:
+                if event == zmq.POLLIN:
+                    self._process_request(socket_event)
+            time.sleep(WAIT_CHECK * STABLE_MOD)
 
-    def _parse_header(self, header_str: str) -> Tuple[str, str, Dict[str, Any]]:
-        """Parse the header string and return the command name, function name, and dataset."""
-        if not header_str:
-            raise ValueError("Header is empty")
-
-        header: Dict[str, Any] = json.loads(header_str)
-
-        command_name = header.get("command_name")
-        func_name = header.get("function")
-        dataset = header.get("dataset")
-
-        return command_name, func_name, dataset
+    def run(self) -> None:
+        """Start the server threads."""
+        threading.Thread(target=self._start_listening).start()
+        logging.info("Server started and listening for requests...")

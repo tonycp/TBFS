@@ -109,3 +109,15 @@ def GetAll(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
     return create_handler("GetAll", dataset)
+
+
+def Chord(
+    dataset: Dict[str, Optional[Callable[[Any], bool]]]
+) -> Callable[[Callable[..., Any]], Callable[..., str]]:
+    return create_handler("Chord", dataset)
+
+
+def Election(
+    dataset: Dict[str, Optional[Callable[[Any], bool]]]
+) -> Callable[[Callable[..., Any]], Callable[..., str]]:
+    return create_handler("Election", dataset)
