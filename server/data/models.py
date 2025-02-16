@@ -14,8 +14,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 from datetime import datetime, timezone
 
+
 class Base(DeclarativeBase):
     pass
+
 
 file_tags = Table(
     "file_tags",
@@ -23,6 +25,7 @@ file_tags = Table(
     Column("file_id", ForeignKey("files.id"), primary_key=True),
     Column("tag_id", ForeignKey("tags.id"), primary_key=True),
 )
+
 
 class User(Base):
     __tablename__ = "users"
@@ -48,6 +51,7 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, name={self.name!r})"
+
 
 class File(Base):
     __tablename__ = "files"
@@ -91,6 +95,7 @@ class File(Base):
     def __repr__(self) -> str:
         return f"File(id={self.id!r}, name={self.name!r}, file_type={self.file_type!r}, size={self.size!r})"
 
+
 class FileSource(Base):
     __tablename__ = "file_sources"
 
@@ -115,6 +120,7 @@ class FileSource(Base):
 
     def __repr__(self) -> str:
         return f"FileSource(id={self.id!r}, file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, url={self.url!r})"
+
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -141,13 +147,3 @@ class Tag(Base):
 
     def __repr__(self) -> str:
         return f"Tag(id={self.id!r}, name={self.name!r})"
-
-class HashTable(Base):
-    __tablename__ = "hash_table"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    key: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
-    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    def __repr__(self) -> str:
-        return f"HashTable(id={self.id!r}, key={self.key!r}, node_id={self.node_id!r})"

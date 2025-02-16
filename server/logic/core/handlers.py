@@ -1,7 +1,16 @@
 import json, logging
 from typing import Callable, Any, Dict, Optional, Tuple
 
-__all__ = ["handlers", "handle_request", "Create", "Update", "Delete", "Get", "GetAll"]
+__all__ = [
+    "handlers",
+    "handle_request",
+    "Create",
+    "Update",
+    "Delete",
+    "Get",
+    "GetAll",
+    "Chord",
+]
 
 handlers: Dict[
     str, Tuple[Callable[[Dict[str, Any]], str], Dict[str, Callable[[Any], bool]]]

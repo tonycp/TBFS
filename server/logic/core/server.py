@@ -2,7 +2,10 @@ import os, time, zmq, json, logging, threading
 from typing import Any, Dict, Optional, Union, Tuple
 from dotenv import load_dotenv
 
-from server.logic.handlers import handle_request
+from .handlers import handle_request
+
+__all__ = ["Server"]
+
 
 class Server:
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
@@ -10,18 +13,18 @@ class Server:
         self.socket = self.context.socket(zmq.REP)
         self._config = self._check_default(config or {})
         self._bind_socket()
-        logging.basicConfig(level=logging.INFO)
         threading.Thread(target=self._run).start()
 
     @staticmethod
-    def _check_default(config: Dict[str, Optional[Union[str, int]]]) -> Dict[str, Optional[Union[str, int]]]:
+    def _check_default(
+        config: Dict[str, Optional[Union[str, int]]]
+    ) -> Dict[str, Optional[Union[str, int]]]:
         """Check and set default values for the configuration."""
         load_dotenv()
         default_config: Dict[str, Optional[Union[str, int]]] = {
             "protocol": os.getenv("PROTOCOL", "tcp"),
             "host": os.getenv("HOST", "localhost"),
             "port": int(os.getenv("PORT", 5555)),
-            "chord_port": int(os.getenv("CHORD_PORT", 5000)),
         }
 
         for key, value in default_config.items():
