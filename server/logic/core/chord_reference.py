@@ -1,35 +1,39 @@
 from __future__ import annotations
-from typing import List, Optional, Dict, Any
+import json
+from typing import Optional, Dict, Any
+import zmq, hashlib, multiprocessing
 
-import zmq, hashlib
+from .server import Server
+from .const import *
 
 
 class ChordReference:
-    def __init__(self, address: str):
-        self.node_id = ChordReference._hash_key(address)
+
+    def __init__(
+        self,
+        address: str,
+        chord_port: int = DEFAULT_NODE_PORT,
+        data_port: int = DEFAULT_DATA_PORT,
+        context=zmq.Context(),
+    ):
+        self.id = ChordReference._hash_key(address)
         self.address = address
+        self.chord_port = chord_port
+        self.data_port = data_port
+        self.context = context
+
+    @staticmethod
+    def get_config(config, context: zmq.Context = zmq.Context()) -> Dict[str, Any]:
+        return {
+            "address": f"{config[PROTOCOL_KEY]}://{config[HOST_KEY]}",
+            "chord_port": config[NODE_PORT_KEY],
+            "data_port": config[PORT_KEY],
+            "context": context,
+        }
 
     @staticmethod
     def _hash_key(key: str) -> int:
         return int(hashlib.sha1(key.encode("utf-8")).hexdigest(), 16)
-
-    @staticmethod
-    def _is_alive(node: ChordReference) -> bool:
-        try:
-            context = zmq.Context()
-            socket = context.socket(zmq.REQ)
-            socket.connect(node.address)
-            socket.send(b"PING")
-            response = socket.recv()
-            socket.close()
-            return response == b"PONG"
-        except:
-            return False
-
-    @staticmethod
-    def _check_predecessor(node):
-        if node.predecessor and not ChordReference._is_alive(node.predecessor):
-            node.predecessor = None
 
     @staticmethod
     def _inbetween(k: int, start: int, end: int) -> bool:
@@ -39,53 +43,132 @@ class ChordReference:
         else:
             return start < k or k <= end
 
+    def _check_predecessor(self) -> bool:
+        if self.predecessor and not ChordReference.is_alive(self.predecessor):
+            self.predecessor = None
+        return self.predecessor is None
+
+    # region Properties Methods
+    @property
+    def successor(self) -> ChordReference:
+        return self._get_chord_reference(__name__)
+
+    @property
+    def predecessor(self) -> ChordReference:
+        return self._get_chord_reference(__name__)
+
+    @property
+    def leader(self) -> ChordReference:
+        return self._get_chord_reference(__name__)
+
+    @property
+    def im_the_leader(self) -> bool:
+        return self._get_property(__name__)
+
+    @property
+    def in_election(self) -> bool:
+        return self._get_property(__name__)
+
+    @successor.setter
+    def successor(self, node: ChordReference):
+        self._set_property(__name__, node.address)
+
+    @predecessor.setter
+    def predecessor(self, node: ChordReference):
+        self._set_property(__name__, node.address)
+
+    @leader.setter
+    def leader(self, node: ChordReference):
+        self._set_property(__name__, node.address)
+
+    @im_the_leader.setter
+    def im_the_leader(self, value: bool):
+        self._set_property(__name__, value)
+
+    @in_election.setter
+    def in_election(self, value: bool):
+        self._set_property(__name__, value)
+
+    # endregion
+
+    # region Finding Methods
     def _closest_preceding_node(self, key: int) -> ChordReference:
-        pass
+        self._call_finding_methods(__name__, key)
 
     def _find_successor(self, key: int) -> ChordReference:
-        pass
+        self._call_finding_methods(__name__, key)
 
     def _find_predecessor(self, key: int) -> ChordReference:
-        pass
+        self._call_finding_methods(__name__, key)
 
-    def _update_others(self):
-        pass
+    # endregion
 
-    def _update_finger_table(self, s: ChordReference, i: int):
-        pass
+    # region Notification Methods
+    def adopt_leader(self, node: Optional[ChordReference] = None):
+        self._call_notify_methods(__name__, node)
 
-    def _init_finger_table(self, existing_node: ChordReference):
-        pass
+    def join(self, node: Optional[ChordReference] = None):
+        self._call_notify_methods(__name__, node)
 
-    def _notify(self, node: ChordReference):
-        pass
+    def notify(self, node: ChordReference):
+        self._call_notify_methods(__name__, node)
 
-    def _stabilize(self):
-        pass
+    def reverse_notify(self, node: ChordReference):
+        self._call_notify_methods(__name__, node)
 
-    def _fix_fingers(self):
-        pass
+    def not_alone_notify(self, node: ChordReference):
+        self._call_notify_methods(__name__, node)
 
-    def _handle_election_message(self, data: Dict[str, Any]):
-        pass
+    # endregion
 
-    def _handle_leader_message(self, data: Dict[str, Any]):
-        pass
+    # region Message Methods
 
-    def _find_node_by_id(self, node_id: int) -> Optional[ChordReference]:
-        pass
+    def _call_finding_methods(self, function_name: str, key: int) -> ChordReference:
+        data = json.dumps({"function_name": function_name, "key": key})
+        return self._send_chord_message(CHORD_DATA.FIND_CALL, data)["node"]
 
-    def _send_message(self, address: str, message: Dict[str, Any]):
-        pass
+    def _call_notify_methods(self, function_name: str, node: ChordReference) -> None:
+        data = json.dumps({"function_name": function_name, "node": node.address})
+        self._send_chord_message(CHORD_DATA.NOTIFY_CALL, data)
 
-    def _election_loop(self):
-        pass
+    def _get_property(self, property: str) -> Any:
+        data = json.dumps({"property": property})
+        return self._send_chord_message(CHORD_DATA.GET_PROPERTY, data)["value"]
 
-    def _start_election(self):
-        pass
+    def _set_property(self, property: str, value: Any) -> None:
+        data = json.dumps({"property": property, "value": value})
+        self._send_chord_message(CHORD_DATA.SET_PROPERTY, data)
 
-    def _send_election_message(self):
-        pass
+    def _get_chord_reference(self, property: str):
+        chord_port, data_port, context = self.chord_port, self.data_port, self.context
+        response = self._get_property(property)
+        return ChordReference(response, chord_port, data_port, context)
 
-    def join(self, existing_node: Optional[ChordReference] = None):
-        pass
+    def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> str:
+        header = Server.header_data(**CHORD_DATA_COMMANDS[chord_data])
+        return self._zmq_call(header, data)
+
+    def _zmq_call(self, header: str, data: str) -> Dict[str, Any]:
+        message = [header.encode("utf-8"), data.encode("utf-8")]
+        socket = self.context.socket(zmq.REQ)
+
+        socket.connect(f"{self.address}:{self.chord_port}")
+        socket.send_multipart(message)
+        response = socket.recv_json()
+        socket.close()
+
+        return response
+
+    def is_alive(self) -> bool:
+        try:
+            context = zmq.Context()
+            socket = context.socket(zmq.REQ)
+            socket.connect(self.address)
+            socket.send(b"PING")
+            response = socket.recv()
+            socket.close()
+            return response == b"PONG"
+        except:
+            return False
+
+    # endregion
