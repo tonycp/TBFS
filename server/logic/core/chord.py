@@ -150,6 +150,11 @@ class ChordNode(Server, ChordReference):
             target=func, args=(header, data, mcast_addr, port)
         ).start()
 
+    def send_election_message(self, election: ELECTION):
+        start = Server.header_data(**ELECTION_COMMANDS[election])
+        data = {"id": self.id}
+        return self.send_PUB_message(start, data)
+
     # endregion
 
     # region Threading Methods
@@ -234,14 +239,10 @@ class ChordNode(Server, ChordReference):
         self._connect_socket(socket, url, zmq.POLLIN)
         socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
-        start = Server.header_data(**ELECTION_COMMANDS[ELECTION.START])
-        winner = Server.header_data(**ELECTION_COMMANDS[ELECTION.WINNER])
-        data = {"id": self.id}
-
         counter = 0
         while True:
             if not self.leader and not self.in_election:
-                self.send_PUB_message(start, data)
+                self.send_election_message(ELECTION.START)
                 logging.info("🔶 Starting leader election...")
                 self.in_election = True
                 self.leader = None
@@ -252,7 +253,7 @@ class ChordNode(Server, ChordReference):
                         self.im_the_leader = True
                         self.leader = self.id
                         self.in_election = False
-                        self.send_PUB_message(winner, data)
+                        self.send_election_message(ELECTION.WINNER)
                         logging.info(f"💠 I am the new leader")
                     counter = 0
                     self.in_election = False

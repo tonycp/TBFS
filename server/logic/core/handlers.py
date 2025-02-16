@@ -74,7 +74,7 @@ def create_handler(
         handlers[index] = (func, dataset)
 
         def wrapper(data: Dict[str, Any]) -> str:
-            return json.dumps(func(**data))
+            return json.dumps(func(**data)).encode("utf-8")
 
         return wrapper
 

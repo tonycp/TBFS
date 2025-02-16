@@ -16,6 +16,11 @@ def in_between(k: int, start: int, end: int) -> bool:
         return start < k or k <= end
 
 
+def bully(id: int, other_id: int) -> bool:
+    """Check if the current node is more powerful than the other node."""
+    return int(id) > int(other_id)
+
+
 class ChordReference:
 
     def __init__(
