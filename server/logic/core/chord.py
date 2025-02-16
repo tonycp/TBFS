@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import List, Optional, Dict, Union
 
-import multiprocessing, threading, zmq
-import time, logging, os
+import threading, zmq
+import time, logging, os, json
 
 from .chord_reference import ChordReference, in_between
 from .server import Server
@@ -17,7 +17,6 @@ class ChordNode(Server, ChordReference):
     _leader: Optional[ChordReference]
     _im_the_leader: bool
     _in_election: bool
-    _is_alive: bool
 
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
         ChordNode._check_default(config or {})
@@ -72,7 +71,7 @@ class ChordNode(Server, ChordReference):
 
     @property
     def is_alive(self) -> bool:
-        return self._is_alive
+        return True
 
     @successor.setter
     def successor(self, node: ChordReference):
@@ -130,7 +129,7 @@ class ChordNode(Server, ChordReference):
 
     def join(self, node: Optional[ChordReference] = None) -> None:
         if node:
-            logging.info(f"❕ Joining to {node.id}...")
+            logging.info(f"Joining to {node.id}...")
             if not node.is_alive:
                 raise Exception(f"There is no node using the address {node.ip}")
 
@@ -144,39 +143,38 @@ class ChordNode(Server, ChordReference):
                 # self.predpred = self
                 self.successor.not_alone_notify(self)
         else:
-            logging.info("❕ Joining as the first node...")
+            logging.info("Joining as the first node...")
             self.successor = self
             self.predecessor = None
             # self.predpred = None
             self.adopt_leader()
 
-        logging.info(f"✔️ Node {self.id} joined the network")
+        logging.info(f"Node {self.id} joined the network")
 
     def notify(self, node: ChordReference) -> None:
-        logging.info(f"❕ Notifying {node.id}...")
+        if node.id == self.id:
+            return
+        logging.info(f"Notifying {node.id}...")
+        if self.predecessor is None:
+            self.predecessor = node
+            # self.predpred = node.pred
+            # pull replication to predecessor
+            # self.update_replication(False, True)
 
-        if node.id != self.id:
-            if self.predecessor is None:
-                self.predecessor = node
-                # self.predpred = node.pred
-                # pull replication to predecessor
-                # self.update_replication(False, True)
-
-            elif node.is_alive and in_between(node.id, self.predecessor, self.id):
-                self.predecessor = node
-                # self.predpred = self.pred
-                # push replication delegation to predecessor
-                # self.update_replication(True, False)
-
-        logging.info(f"✔️ Node {node.id} notified {self.id}")
+        elif node.is_alive and in_between(node.id, self.predecessor, self.id):
+            self.predecessor = node
+            # self.predpred = self.pred
+            # push replication delegation to predecessor
+            # self.update_replication(True, False)
+        logging.info(f"Node {node.id} notified {self.id}")
 
     def reverse_notify(self, node: ChordReference) -> None:
-        logging.info(f"❕ Reversing notifying {node.id}...")
+        logging.info(f"Reversing notifying {node.id}...")
         self.successor = node
-        logging.info(f"✔️ Node {node.id} reversed notified {self.id}")
+        logging.info(f"Node {node.id} reversed notified {self.id}")
 
     def not_alone_notify(self, node: ChordReference) -> None:
-        logging.info(f"❕ Notifying {node.id} that I am not alone...")
+        logging.info(f"Notifying {node.id} that I am not alone...")
 
         self.successor = node
         self.predecessor = node
@@ -184,7 +182,7 @@ class ChordNode(Server, ChordReference):
         # Update replication with new successor
         # self.update_replication(delegate_data=True, case_2=True)
 
-        logging.info(f"✔️ Node {node.id} notified {self.id} that I am not alone")
+        logging.info(f"Node {node.id} notified {self.id} that I am not alone")
 
     # endregion
 
@@ -198,33 +196,33 @@ class ChordNode(Server, ChordReference):
 
     def send_PUB_message(self, header: str, data: str) -> None:
         mcast_addr = self._config[MCAST_ADDR_KEY]
-        port = self._config[PORT_KEY]
+        port = self._config[NODE_PORT_KEY]
         func = self.zmq_PUB
-        multiprocessing.Process(
-            target=func, args=(header, data, mcast_addr, port)
-        ).start()
+        threading.Thread(target=func, args=(header, data, mcast_addr, port)).start()
 
     def send_election_message(self, election: ELECTION) -> None:
         start = Server.header_data(**ELECTION_COMMANDS[election])
-        data = {"id": self.id}
+        data = json.dumps({"id": self.id})
         return self.send_PUB_message(start, data)
 
     # endregion
 
     # region Threading Methods
     def _stabilize(self) -> None:
+        time.sleep(WAIT_CHECK * START_MOD)
+
         while True:
-            if self.successor.id != self.id:
+            if self.successor.id == self.id:
                 time.sleep(WAIT_CHECK * STABLE_MOD)
                 continue
 
-            logging.info("🔵 Checking stability...")
+            logging.info("Checking stability...")
             if self.successor.is_alive:
                 x = self.successor.predecessor
                 if x and x.id == self.id:
-                    logging.info("🟢 Already stable")
+                    logging.info("Already stable")
                 else:
-                    logging.warning(f"🟡 Stabilizing: {self.id} -> {x.id}")
+                    logging.warning(f"Stabilizing...")
                     if x and in_between(x.id, self.id, self.successor.id):
                         self.successor = x
                         # update replication with new successor
@@ -235,19 +233,21 @@ class ChordNode(Server, ChordReference):
                 # if self.pred and self.pred.check_node():
                 #     self.predpred = self.pred.pred
             else:
-                logging.error("🔴 No successor found, waiting for predecesor check...")
+                logging.error("No successor found, waiting for predecesor check...")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def _check_predecessor(self) -> None:
+        time.sleep(WAIT_CHECK * START_MOD)
+
         while True:
             if self.successor is self:
                 time.sleep(WAIT_CHECK * STABLE_MOD)
                 continue
 
-            logging.info("🔵 Checking predecessor...")
+            logging.info("Checking predecessor...")
             if self.predecessor:
                 if not self.predecessor.is_alive:
-                    logging.warning(f"🟡 Predecessor {self.predecessor.id} is dead")
+                    logging.warning(f"Predecessor {self.predecessor.id} is dead")
                     two_in_a_row = False
                     predpred = self.predecessor.predecessor
                     if predpred.is_alive:
@@ -282,12 +282,14 @@ class ChordNode(Server, ChordReference):
                     # else:
                     #     self.update_replication(False, False, True)
                 else:
-                    logging.info(f"🟢 Predecessor {self.predecessor.id} is alive")
+                    logging.info(f"Predecessor {self.predecessor.id} is alive")
             else:
-                logging.warning("🔴 No predecessor found")
+                logging.warning("No predecessor found")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def _election_loop(self) -> None:
+        time.sleep(WAIT_CHECK * START_MOD)
+
         socket = self.context.socket(zmq.SUB)
         url = f"tcp://{self._config[HOST_KEY]}:{self._config[NODE_PORT_KEY]}"
         self._connect_socket(socket, url, zmq.POLLIN)
@@ -297,36 +299,39 @@ class ChordNode(Server, ChordReference):
         while True:
             if not self.leader and not self.in_election:
                 self.send_election_message(ELECTION.START)
-                logging.info("🔶 Starting leader election...")
+                logging.info("Starting leader election...")
                 self.in_election = True
                 self.leader = None
             elif self.in_election:
                 counter += 1
+                logging.info(f"waiting... {counter}")
                 if counter == ELECTION_TIMEOUT:
                     if not self.leader and self.im_the_leader:
                         self.im_the_leader = True
-                        self.leader = self.id
+                        self.leader = self
                         self.in_election = False
                         self.send_election_message(ELECTION.WINNER)
-                        logging.info(f"💠 I am the new leader")
+                        logging.info(f"I am the new leader")
                     counter = 0
                     self.in_election = False
             else:
-                logging.info(f"🔷 Leader: {self.leader}")
-            logging.info(f"waiting... {counter}")
+                logging.info(f"Leader: {self.leader.id}")
+                time.sleep(WAIT_CHECK)
             time.sleep(WAIT_CHECK * ELECTION_MOD)
 
     def _leader_checker(self) -> None:
+        time.sleep(WAIT_CHECK * START_MOD)
+
         while True:
             if self.leader:
-                if self.leader.is_alive:
-                    logging.info(f"🔷 Leader: {self.leader.id}")
-                else:
+                if not self.leader.is_alive:
                     self.leader = None
-                    logging.error("🔶 Leader is dead")
+                    logging.error("Leader is dead")
             time.sleep(WAIT_CHECK * ELECTION_MOD)
 
     def _fix_fingers(self, remain: int = 0) -> None:
+        time.sleep(WAIT_CHECK * START_MOD)
+
         while True:
             for i in range(remain, remain + BATCH_SIZE):
                 start = (self.id + 2**i) % (2**SHA_1)
@@ -337,12 +342,11 @@ class ChordNode(Server, ChordReference):
     # endregion
 
     def run(self) -> None:
-        Server.run(self)
-
         # Start threads
         threading.Thread(target=self._stabilize, daemon=True).start()
         threading.Thread(target=self._check_predecessor, daemon=True).start()
-        threading.Thread(target=self._start_listening, daemon=True).start()
         threading.Thread(target=self._election_loop, daemon=True).start()
         threading.Thread(target=self._leader_checker, daemon=True).start()
         threading.Thread(target=self._fix_fingers, daemon=True).start()
+
+        Server.run(self)

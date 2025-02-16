@@ -22,21 +22,24 @@ DEFAULT_PROTOCOL = "tcp"
 DEFAULT_HOST = "localhost"
 DEFAULT_DATA_PORT = 5555
 DEFAULT_NODE_PORT = 5556
-DEFAULT_MCAST_ADDR = "225.0.0.1"
+DEFAULT_MCAST_ADDR = "*"
 
 # Chord constants
 SHA_1 = 160
 BATCH_SIZE = 20
 WAIT_CHECK = 5
+START_MOD = 0.25
 STABLE_MOD = 2
 ELECTION_MOD = 0.1
 ELECTION_TIMEOUT = 10
+
 
 # Commands for the Chord protocol
 class ELECTION(Enum):
     START = 1
     WINNER = 2
     OK = 3
+
 
 ELECTION_COMMANDS = {
     ELECTION.START: {
@@ -47,7 +50,7 @@ ELECTION_COMMANDS = {
     ELECTION.WINNER: {
         "command_name": "Election",
         "function": "winner_call",
-        "dataset": ["id"],
+        "dataset": ["id", "address"],
     },
     ELECTION.OK: {
         "command_name": "Election",
@@ -56,11 +59,14 @@ ELECTION_COMMANDS = {
     },
 }
 
+
 class CHORD_DATA(Enum):
     GET_PROPERTY = 1
     SET_PROPERTY = 2
     FIND_CALL = 3
     NOTIFY_CALL = 4
+    PON_CALL = 5
+
 
 CHORD_DATA_COMMANDS = {
     CHORD_DATA.GET_PROPERTY: {
@@ -82,5 +88,10 @@ CHORD_DATA_COMMANDS = {
         "command_name": "Chord",
         "function": "notify_call",
         "dataset": ["function_name", "node"],
+    },
+    CHORD_DATA.PON_CALL: {
+        "command_name": "Chord",
+        "function": "pon_call",
+        "dataset": ["message"],
     },
 }

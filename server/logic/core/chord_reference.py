@@ -55,15 +55,15 @@ class ChordReference:
     # region Properties Methods
     @property
     def successor(self) -> ChordReference:
-        return self._get_chord_reference(__name__)
+        return self._get_chord_reference("address")
 
     @property
     def predecessor(self) -> ChordReference:
-        return self._get_chord_reference(__name__)
+        return self._get_chord_reference("address")
 
     @property
     def leader(self) -> ChordReference:
-        return self._get_chord_reference(__name__)
+        return self._get_chord_reference("address")
 
     @property
     def im_the_leader(self) -> bool:
@@ -168,15 +168,7 @@ class ChordReference:
         return response
 
     def _ping_pong(self) -> bool:
-        try:
-            context = zmq.Context()
-            socket = context.socket(zmq.REQ)
-            socket.connect(self.address)
-            socket.send(b"PING")
-            response = socket.recv()
-            socket.close()
-            return response == b"PONG"
-        except:
-            return False
+        data = json.dumps({"message": "Ping"})
+        self._send_chord_message(CHORD_DATA.PON_CALL, data)
 
     # endregion

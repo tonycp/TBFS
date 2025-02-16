@@ -8,6 +8,7 @@ from .const import *
 
 __all__ = ["Server"]
 
+
 class Server:
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
         self._config = self._check_default(config or {})
@@ -34,9 +35,15 @@ class Server:
         return config
 
     @staticmethod
-    def header_data(command: str, func: str, data: Dict[str, Any]) -> str:
+    def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> str:
         """Create a header string from the command name, function name, and dataset."""
-        return json.dumps({"command_name": command, "function": func, "dataset": data})
+        return json.dumps(
+            {
+                "command_name": command_name,
+                "function": function,
+                "dataset": dataset,
+            }
+        )
 
     @staticmethod
     def parse_header(header_str: str) -> Tuple[str, str, Dict[str, Any]]:
@@ -45,7 +52,11 @@ class Server:
             raise ValueError("Header is empty")
 
         header: Dict[str, Any] = json.loads(header_str)
-        return header.get("command_name"), header.get("function"), header.get("dataset")
+        return (
+            header.get("command_name"),
+            header.get("function"),
+            header.get("dataset"),
+        )
 
     def _bind_socket(
         self,
@@ -57,7 +68,7 @@ class Server:
         socket.bind(url)
         self.poller.register(socket, poller_flags)
         logging.info(f"Binding socket on {url}")
-    
+
     def _connect_socket(
         self,
         socket: zmq.Socket,
@@ -107,5 +118,5 @@ class Server:
 
     def run(self) -> None:
         """Start the server threads."""
-        threading.Thread(target=self._start_listening).start()
         logging.info("Server started and listening for requests...")
+        self._start_listening()
