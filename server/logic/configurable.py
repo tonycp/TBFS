@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, Optional, Union
 from dotenv import load_dotenv
 
@@ -29,3 +31,11 @@ class Configurable:
         for key, value in default_config.items():
             config.setdefault(key, value)
         return config
+
+    def copy_with_updates(
+        self, updates: Dict[str, Optional[Union[str, int]]]
+    ) -> Configurable:
+        """Return a copy of the current configuration with updates applied."""
+        new_config = self._config.copy()
+        new_config.update(updates)
+        return Configurable(new_config)

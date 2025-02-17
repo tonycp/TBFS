@@ -6,6 +6,8 @@ import zmq, hashlib, json
 from logic.handlers import *
 from data.const import *
 
+from server.logic.configurable import Configurable
+
 __all__ = ["ChordReference", "in_between"]
 
 
@@ -25,28 +27,16 @@ def bully(id: int, other_id: int) -> bool:
 class ChordReference:
     def __init__(
         self,
-        address: str,
-        chord_port: int = DEFAULT_NODE_PORT,
-        data_port: int = DEFAULT_DATA_PORT,
-        context: zmq.Context = zmq.Context(),
+        config: Configurable,
+        context=zmq.Context(),
     ):
-        self.id = ChordReference._hash_key(address)
-        self.address = address
-        self.chord_port = chord_port
-        self.data_port = data_port
+        self.protocol = config[PROTOCOL_KEY]
+        self.ip = config[HOST_KEY]
+        self.chord_port = config[NODE_PORT_KEY]
+        self.data_port = config[PORT_KEY]
         self.context = context
-
-    @staticmethod
-    def get_config(
-        config: Dict[str, Optional[Union[str, int]]],
-        context: zmq.Context = zmq.Context(),
-    ) -> Dict[str, Any]:
-        return {
-            "address": f"{config[PROTOCOL_KEY]}://{config[HOST_KEY]}",
-            "chord_port": config[NODE_PORT_KEY],
-            "data_port": config[PORT_KEY],
-            "context": context,
-        }
+        self.id = ChordReference._hash_key(f"{self.ip}:{self.chord_port}")
+        self._config = config
 
     @staticmethod
     def _hash_key(key: str) -> int:
@@ -55,15 +45,15 @@ class ChordReference:
     # region Properties Methods
     @property
     def successor(self) -> ChordReference:
-        return self._get_chord_reference("address")
+        return self._get_chord_reference("id")
 
     @property
     def predecessor(self) -> ChordReference:
-        return self._get_chord_reference("address")
+        return self._get_chord_reference("id")
 
     @property
     def leader(self) -> ChordReference:
-        return self._get_chord_reference("address")
+        return self._get_chord_reference("id")
 
     @property
     def im_the_leader(self) -> bool:
@@ -79,15 +69,15 @@ class ChordReference:
 
     @successor.setter
     def successor(self, node: ChordReference):
-        self._set_property(__name__, node.address)
+        self._set_property(__name__, node.id)
 
     @predecessor.setter
     def predecessor(self, node: ChordReference):
-        self._set_property(__name__, node.address)
+        self._set_property(__name__, node.id)
 
     @leader.setter
     def leader(self, node: ChordReference):
-        self._set_property(__name__, node.address)
+        self._set_property(__name__, node.id)
 
     @im_the_leader.setter
     def im_the_leader(self, value: bool):
@@ -136,7 +126,7 @@ class ChordReference:
         return self._send_chord_message(CHORD_DATA.FIND_CALL, data)["node"]
 
     def _call_notify_methods(self, function_name: str, node: ChordReference) -> None:
-        data = json.dumps({"function_name": function_name, "node": node.address})
+        data = json.dumps({"function_name": function_name, "node": node.id})
         self._send_chord_message(CHORD_DATA.NOTIFY_CALL, data)
 
     def _get_property(self, property: str) -> Any:
@@ -148,9 +138,9 @@ class ChordReference:
         self._send_chord_message(CHORD_DATA.SET_PROPERTY, data)
 
     def _get_chord_reference(self, property: str) -> ChordReference:
-        chord_port, data_port, context = self.chord_port, self.data_port, self.context
         response = self._get_property(property)
-        return ChordReference(response, chord_port, data_port, context)
+        updated_config = self._config.copy_with_updates({HOST_KEY: response})
+        return ChordReference(updated_config, self.context)
 
     def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> Dict[str, Any]:
         header = header_data(**CHORD_DATA_COMMANDS[chord_data])
@@ -160,7 +150,7 @@ class ChordReference:
         message = [header.encode("utf-8"), data.encode("utf-8")]
         socket = self.context.socket(zmq.REQ)
 
-        socket.connect(f"{self.address}:{self.chord_port}")
+        socket.connect(f"{self.protocol}://{self.ip}:{self.chord_port}")
         socket.send_multipart(message)
         response = socket.recv_json()
         socket.close()

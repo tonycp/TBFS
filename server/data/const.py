@@ -50,7 +50,7 @@ ELECTION_COMMANDS = {
     ELECTION.WINNER: {
         "command_name": "Election",
         "function": "winner_call",
-        "dataset": ["id", "address"],
+        "dataset": ["id", "ip"],
     },
     ELECTION.OK: {
         "command_name": "Election",

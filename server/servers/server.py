@@ -1,39 +1,23 @@
-from typing import Any, Dict, List, Optional, Union, Tuple
-from dotenv import load_dotenv
+from typing import List, Optional
 
-import os, time, zmq, json, logging, threading
+import time, zmq, json, logging, threading
 
 from data.const import *
 from logic.handlers import *
+from logic.configurable import Configurable
 
 
 __all__ = ["Server"]
 
 
 class Server:
-    def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
-        self._config = self._check_default(config or {})
+    def __init__(self, config: Optional[Configurable] = None):
+        self._config = config or Configurable()
         url = f"{self._config[PROTOCOL_KEY]}://{self._config[HOST_KEY]}:{self._config[PORT_KEY]}"
         self.poller = zmq.Poller()
         self.context = zmq.Context()
         socket = self.context.socket(zmq.REP)
         self._bind_socket(socket, url, zmq.POLLIN)
-
-    @staticmethod
-    def _check_default(
-        config: Dict[str, Optional[Union[str, int]]]
-    ) -> Dict[str, Optional[Union[str, int]]]:
-        """Check and set default values for the configuration."""
-        load_dotenv()
-        default_config: Dict[str, Optional[Union[str, int]]] = {
-            PROTOCOL_KEY: os.getenv(PROTOCOL_ENV_KEY, DEFAULT_PROTOCOL),
-            HOST_KEY: os.getenv(HOST_ENV_KEY, DEFAULT_HOST),
-            PORT_KEY: int(os.getenv(PORT_ENV_KEY, DEFAULT_DATA_PORT)),
-        }
-
-        for key, value in default_config.items():
-            config.setdefault(key, value)
-        return config
 
     def _bind_socket(
         self,

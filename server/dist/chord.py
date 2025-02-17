@@ -6,24 +6,23 @@ import time, logging, json
 
 from data.const import *
 from logic.handlers import *
-from servers.configurable import Configurable
+from server.logic.configurable import Configurable
 
 from .chord_reference import ChordReference, in_between
 
 __all__ = ["ChordNode"]
 
 
-class ChordNode(ChordReference, Configurable):
+class ChordNode(ChordReference):
     _successor: ChordReference
     _predecessor: Optional[ChordReference]
     _leader: Optional[ChordReference]
     _im_the_leader: bool
     _in_election: bool
 
-    def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
-        Configurable.__init__(self, config)
-        chord_ref = ChordReference.get_config(self._config, zmq.Context())
-        ChordReference.__init__(self, **chord_ref)
+    def __init__(self, config: Optional[Configurable] = None):
+        config = config or Configurable()
+        ChordReference.__init__(self, config)
 
         self.successor: ChordReference = self
         self.leader: Optional[ChordReference] = None
@@ -196,7 +195,7 @@ class ChordNode(ChordReference, Configurable):
         message = [header] + data
         socket = self.context.socket(zmq.REQ)
 
-        socket.connect(f"{node.address}:{port}")
+        socket.connect(f"{node.protocol}://{node.ip}:{port}")
         socket.send_multipart(message)
         response = socket.recv_json()
         socket.close()

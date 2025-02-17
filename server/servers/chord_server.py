@@ -4,6 +4,7 @@ import threading, json, logging, time
 
 from dist.chord_reference import ChordReference
 from dist.chord import ChordNode
+from logic.configurable import Configurable
 from logic.handlers import *
 from data.const import *
 
@@ -13,7 +14,8 @@ __all__ = ["ChordServer"]
 
 
 class ChordServer(Server, ChordNode):
-    def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
+    def __init__(self, config: Optional[Configurable] = None):
+        config = config or Configurable()
         Server.__init__(self, config)
         ChordNode.__init__(self, config)
 

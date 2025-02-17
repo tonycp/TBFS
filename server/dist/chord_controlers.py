@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any
 
 import logging
 
-from data.const import ELECTION
+from data.const import ELECTION, HOST_KEY
 from logic.handlers import Chord, Election
 
 from .chord import ChordNode
@@ -64,19 +64,15 @@ def election_call(id: int) -> Dict[str, Any]:
         return {"message": "Work Done"}
 
 
-@Election({"id": int, "address": str})
-def winner_call(id: int, address: str) -> None:
+@Election({"id": int, "ip": str})
+def winner_call(id: int, ip: str) -> None:
     logging.info(f"Winner message received form: {id}")
 
     is_bully = bully(_chord_server.id, id)
     have_leader = _chord_server.leader and not bully(id, _chord_server.leader.id)
     if not is_bully and not have_leader:
-        chord_port, data_port, context = (
-            _chord_server.chord_port,
-            _chord_server.data_port,
-            _chord_server.context,
-        )
-        _chord_server.leader = ChordReference(address, chord_port, data_port, context)
+        updated_config = _chord_server._config.copy_with_updates({HOST_KEY: ip})
+        _chord_server.leader = ChordReference(updated_config, _chord_server.context)
         _chord_server.im_the_leader = _chord_server.id == id
         _chord_server.in_election = False
 
