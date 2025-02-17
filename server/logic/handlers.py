@@ -1,21 +1,48 @@
-import json, logging
-
 from typing import Callable, Any, Dict, Optional, Tuple
+
+import json, logging
 
 __all__ = [
     "handlers",
     "handle_request",
+    "header_data",
+    "parse_header",
     "Create",
     "Update",
     "Delete",
     "Get",
     "GetAll",
     "Chord",
+    "Election",
 ]
 
 handlers: Dict[
     str, Tuple[Callable[[Dict[str, Any]], str], Dict[str, Callable[[Any], bool]]]
 ] = {}
+
+
+def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> str:
+    """Create a header string from the command name, function name, and dataset."""
+    return json.dumps(
+        {
+            "command_name": command_name,
+            "function": function,
+            "dataset": dataset,
+        }
+    )
+
+
+def parse_header(header_str: str) -> Tuple[str, str, Dict[str, Any]]:
+    """Parse the header string and return the command name, function name, and dataset."""
+    if not header_str:
+        raise ValueError("Header is empty")
+
+    header: Dict[str, Any] = json.loads(header_str)
+    return (
+        header.get("command_name"),
+        header.get("function"),
+        header.get("dataset"),
+    )
 
 
 def _load_data(

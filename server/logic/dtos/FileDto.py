@@ -1,8 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
-from ..business_data import File
+
+from data import File
 
 __all__ = ["FileInputDto", "FileOutputDto"]
+
 
 class FileBaseDto:
     def __init__(
@@ -47,6 +49,7 @@ class FileBaseDto:
     def __repr__(self) -> str:
         return f"FileBaseDto(name={self.name!r}, file_type={self.file_type!r}, size={self.size!r}, user_id={self.user_id!r})"
 
+
 class FileInputDto(FileBaseDto):
     """
     Strongly typed class to represent file input data transfer object.
@@ -70,6 +73,7 @@ class FileInputDto(FileBaseDto):
         if with_content:
             result["content"] = self.content.decode("utf-8")
         return result
+
 
 class FileOutputDto(FileBaseDto):
     """

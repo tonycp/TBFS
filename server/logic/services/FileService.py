@@ -1,8 +1,10 @@
-import logging
-from typing import List
-from ..dtos import FileInputDto, FileOutputDto
-from ..business_data import File, file_tags, Repository
 from sqlalchemy.exc import SQLAlchemyError
+from typing import List
+
+import logging
+
+from logic.dtos import FileInputDto, FileOutputDto
+from data import File, file_tags, Repository
 
 __all__ = ["FileService"]
 

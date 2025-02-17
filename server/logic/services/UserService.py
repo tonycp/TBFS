@@ -1,7 +1,9 @@
-import logging
-from ..dtos import UserInputDto, UserOutputDto
-from ..business_data import User, Repository
 from sqlalchemy.exc import SQLAlchemyError
+
+import logging
+
+from logic.dtos import UserInputDto, UserOutputDto
+from data import User, Repository
 
 __all__ = ["UserService"]
 

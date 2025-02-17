@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
-from ..business_data import User
+
+from data import User
 
 __all__ = ["UserInputDto", "UserOutputDto"]
 

@@ -1,6 +1,9 @@
-import os
 from typing import Any, Dict, List, Optional, Type
 from dotenv import load_dotenv
+
+import os
+
+from data import *
 
 from .dtos import *
 from .services import *

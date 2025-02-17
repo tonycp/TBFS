@@ -2,16 +2,18 @@ from __future__ import annotations
 from typing import List, Optional, Dict, Union
 
 import threading, zmq
-import time, logging, os, json
+import time, logging, json
+
+from data.const import *
+from servers.configurable import Configurable
+from servers.server import Server
 
 from .chord_reference import ChordReference, in_between
-from .server import Server
-from .const import *
 
 __all__ = ["ChordNode"]
 
 
-class ChordNode(Server, ChordReference):
+class ChordNode(ChordReference, Configurable):
     _successor: ChordReference
     _predecessor: Optional[ChordReference]
     _leader: Optional[ChordReference]
@@ -19,8 +21,9 @@ class ChordNode(Server, ChordReference):
     _in_election: bool
 
     def __init__(self, config: Optional[Dict[str, Optional[Union[str, int]]]] = None):
-        ChordNode._check_default(config or {})
-        Server.__init__(self, config)
+        Configurable.__init__(self, config)
+        chord_ref = ChordReference.get_config(self._config, zmq.Context())
+        ChordReference.__init__(self, **chord_ref)
 
         self.successor: ChordReference = self
         self.leader: Optional[ChordReference] = None
@@ -28,25 +31,6 @@ class ChordNode(Server, ChordReference):
         self.finger_table: List[Optional[ChordReference]] = [self] * SHA_1
         self.im_the_leader: bool = True
         self.in_election: bool = False
-
-        chord_ref = ChordReference.get_config(self._config, self.context)
-        ChordReference.__init__(self, **chord_ref)
-
-    @staticmethod
-    def _check_default(
-        config: Dict[str, Optional[Union[str, int]]]
-    ) -> Dict[str, Optional[Union[str, int]]]:
-        """Check and set default values for the configuration."""
-        Server._check_default(config)
-
-        default_config = {
-            NODE_PORT_KEY: int(os.getenv(NODE_PORT_ENV_KEY, DEFAULT_NODE_PORT)),
-            MCAST_ADDR_KEY: os.getenv(MCAST_ADDR_ENV_KEY, DEFAULT_MCAST_ADDR),
-        }
-
-        for key, value in default_config.items():
-            config.setdefault(key, value)
-        return config
 
     # region Properties Methods
     @property
@@ -206,12 +190,13 @@ class ChordNode(Server, ChordReference):
         return self.send_PUB_message(start, data)
 
     def send_request_message(
-        self, node: ChordReference, header: str, data: List[str]
+        self, node: ChordReference, header: str, data: List[str], port: int
     ) -> str:
+        """Send a request message to the specified node and return the response."""
         message = [header] + data
         socket = self.context.socket(zmq.REQ)
 
-        socket.connect(f"{node.address}:{node.data_port}")
+        socket.connect(f"{node.address}:{port}")
         socket.send_multipart(message)
         response = socket.recv_json()
         socket.close()
@@ -354,19 +339,6 @@ class ChordNode(Server, ChordReference):
 
     # endregion
 
-    # region Request Methods
-    def _solver_request(self, header_str: str, rest_message: List[str]) -> str:
-        """Solve the request and return the result."""
-        while not self.leader.is_alive:
-            time.sleep(WAIT_CHECK * START_MOD)
-
-        if not self.im_the_leader:
-            return self.send_request_message(self.leader, header_str, rest_message)
-        else:
-            return Server._solver_request(self, header_str, rest_message)
-
-    # endregion
-
     def run(self) -> None:
         # Start threads
         threading.Thread(target=self._stabilize, daemon=True).start()
@@ -374,5 +346,3 @@ class ChordNode(Server, ChordReference):
         threading.Thread(target=self._election_loop, daemon=True).start()
         threading.Thread(target=self._leader_checker, daemon=True).start()
         threading.Thread(target=self._fix_fingers, daemon=True).start()
-
-        Server.run(self)

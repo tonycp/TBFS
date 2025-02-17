@@ -2,10 +2,11 @@ from typing import Optional, Dict, Any
 
 import logging
 
-from .const import ELECTION
+from data.const import ELECTION
+from logic.handlers import Chord, Election
+
 from .chord import ChordNode
 from .chord_reference import ChordReference, bully
-from .handlers import Chord, Election
 
 _chord_server: Optional[ChordNode] = None
 

@@ -3,8 +3,8 @@ from typing import Optional, Dict, Any, Union
 
 import zmq, hashlib, json
 
-from .server import Server
-from .const import *
+from servers.server import Server
+from data.const import *
 
 __all__ = ["ChordReference", "in_between"]
 

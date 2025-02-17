@@ -1,8 +1,10 @@
-import logging
-from typing import List
-from ..dtos import TagInputDto, TagOutputDto
-from ..business_data import Tag, Repository, file_tags
 from sqlalchemy.exc import SQLAlchemyError
+from typing import List
+
+import logging
+
+from logic.dtos import TagInputDto, TagOutputDto
+from data import Tag, Repository, file_tags
 
 __all__ = ["TagService"]
 

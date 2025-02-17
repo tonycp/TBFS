@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
-from ..business_data import Tag
+
+from data import Tag
 
 __all__ = ["TagInputDto", "TagOutputDto"]
 

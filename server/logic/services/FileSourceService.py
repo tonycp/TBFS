@@ -1,16 +1,16 @@
-import logging
-from typing import List
-from ..dtos import FileSourceInputDto, FileSourceOutputDto
-from ..business_data import FileSource, file_tags, Repository
 from sqlalchemy.exc import SQLAlchemyError
+from typing import List
+
+import logging
+
+from logic.dtos import FileSourceInputDto, FileSourceOutputDto
+from data import FileSource, file_tags, Repository
 
 __all__ = ["FileSourceService"]
 
 
 class FileSourceService:
-    def __init__(
-        self, repository: Repository[FileSource]
-    ) -> None:
+    def __init__(self, repository: Repository[FileSource]) -> None:
         self.repository = repository
 
     def get(self, input: FileSourceInputDto) -> FileSource | None:

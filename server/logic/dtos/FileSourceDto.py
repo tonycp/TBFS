@@ -1,8 +1,10 @@
 from __future__ import annotations
 from datetime import datetime
-from ..business_data import FileSource
+
+from data import FileSource
 
 __all__ = ["FileSourceInputDto", "FileSourceOutputDto"]
+
 
 class FileSourceInputDto:
     def __init__(
@@ -43,6 +45,7 @@ class FileSourceInputDto:
 
     def __repr__(self) -> str:
         return f"FileSourceInputDto(file_id={self.file_id!r}, chunk_size={self.chunk_size!r}, url={self.url!r})"
+
 
 class FileSourceOutputDto(FileSourceInputDto):
     def __init__(self, id: int, **kwargs) -> None:

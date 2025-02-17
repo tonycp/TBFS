@@ -3,7 +3,7 @@ from typing import List
 from .business_data import *
 from .dtos import FileInputDto
 from .business_services import ServerService
-from .core.handlers import *
+from .handlers import *
 
 _server_service = ServerService()
 

@@ -1,5 +1,5 @@
 import logging, logging.handlers as handlers
-from logic import ChordNode
+from servers import ChordServer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,7 +14,7 @@ logging.basicConfig(
 
 
 if __name__ == "__main__":
-    server = ChordNode()
+    server = ChordServer()
     try:
         logging.info("Starting the server...")
         server.run()

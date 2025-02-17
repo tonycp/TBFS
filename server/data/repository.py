@@ -2,10 +2,14 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker, scoped_session, Session as SessionType, Query
 from typing import Callable, TypeVar, Generic, Type, List, Optional
+
 from .models import Base
+
+__all__ = ["Repository", "get_repository", "ModelType", "ModelTypeDTO"]
 
 ModelType = TypeVar("ModelType", bound=Base)
 ModelTypeDTO = TypeVar("ModelTypeDTO")
+
 
 class Repository(Generic[ModelType]):
     """Generic repository for performing database operations on models of type ModelType."""
@@ -36,7 +40,9 @@ class Repository(Generic[ModelType]):
         """Retrieve a query of type ModelType."""
         return self.get_session().query(self.model)
 
-    def all(self, query: Query[ModelType], session: Optional[SessionType] = None) -> List[ModelType]:
+    def all(
+        self, query: Query[ModelType], session: Optional[SessionType] = None
+    ) -> List[ModelType]:
         """Execute a given query and return all results."""
         if session is None:
             with self.get_session() as session:
@@ -44,7 +50,9 @@ class Repository(Generic[ModelType]):
         else:
             return query.with_session(session).all()
 
-    def first(self, query: Query[ModelType], session: Optional[SessionType] = None) -> Optional[ModelType]:
+    def first(
+        self, query: Query[ModelType], session: Optional[SessionType] = None
+    ) -> Optional[ModelType]:
         """Execute a given query and return the first result."""
         if session is None:
             with self.get_session() as session:
@@ -106,6 +114,7 @@ class Repository(Generic[ModelType]):
         """Retrieve objects of type ModelType ordered by given criteria."""
         with self.get_session() as session:
             return session.query(self.model).order_by(*criteria).all()
+
 
 def get_repository(model: Type[ModelType], db_url: str) -> Repository[ModelType]:
     return Repository(model, db_url)

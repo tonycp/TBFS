@@ -1,7 +1,3 @@
-from enum import Enum
-from data import *
-
-
 FileInputTypes = {
     "name": str,
     "file_type": str,

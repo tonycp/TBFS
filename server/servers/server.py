@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 
 import os, time, zmq, json, logging, threading
 
-from .handlers import handle_request
-from .const import *
+from data.const import *
+from logic import handle_request
+
 
 __all__ = ["Server"]
 
@@ -34,30 +35,6 @@ class Server:
             config.setdefault(key, value)
         return config
 
-    @staticmethod
-    def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> str:
-        """Create a header string from the command name, function name, and dataset."""
-        return json.dumps(
-            {
-                "command_name": command_name,
-                "function": function,
-                "dataset": dataset,
-            }
-        )
-
-    @staticmethod
-    def parse_header(header_str: str) -> Tuple[str, str, Dict[str, Any]]:
-        """Parse the header string and return the command name, function name, and dataset."""
-        if not header_str:
-            raise ValueError("Header is empty")
-
-        header: Dict[str, Any] = json.loads(header_str)
-        return (
-            header.get("command_name"),
-            header.get("function"),
-            header.get("dataset"),
-        )
-
     def _bind_socket(
         self,
         socket: zmq.Socket,
@@ -80,8 +57,11 @@ class Server:
         self.poller.register(socket, poller_flags)
         logging.info(f"Connected socket on {url}")
 
-    def _solver_request(self, header_str: str, rest_message: List[str]) -> str:
+    def _solver_request(
+        self, header_str: str, rest_message: List[str], last_endpoint: str
+    ) -> str:
         """Solve the request and return the result."""
+        logging.info(f"Received a message from: {last_endpoint}")
         header = Server.parse_header(header_str)
         data = json.loads(rest_message[0].decode("utf-8"))
         return handle_request(header, data)
@@ -90,13 +70,12 @@ class Server:
         """Process incoming requests and send responses."""
         try:
             message = socket.recv_multipart(flags=zmq.NOBLOCK)
+
+            last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT).decode("utf-8")
             header_code = message[0].decode("utf-8")
             rest_message = message[1:]
 
-            last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT).decode("utf-8")
-            logging.info(f"Received a message from: {last_endpoint}")
-
-            result = self._solver_request(header_code, rest_message)
+            result = self._solver_request(header_code, rest_message, last_endpoint)
             logging.info(f"Result: {result}")
 
             socket.send_multipart([result.encode("utf-8")])
