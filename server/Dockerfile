@@ -5,8 +5,8 @@ WORKDIR /app
 
 RUN pip install -U pip
 
-# Instala iptables y otras utilidades necesarias
-RUN apk add --no-cache iptables iproute2
+# Instala iptables, PostgreSQL y otras utilidades necesarias
+RUN apk add --no-cache iptables iproute2 postgresql postgresql-contrib
 
 # Copia el script de inicialización al contenedor
 COPY init.sh /app/init.sh

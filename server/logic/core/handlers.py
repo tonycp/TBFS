@@ -42,14 +42,16 @@ def _load_data(
     return result
 
 
-def handle_request(header: Tuple[str, str, Dict[str, Any]]) -> str:
+def handle_request(
+    header: Tuple[str, str, Dict[str, Any]], data: Dict[str, Any]
+) -> str:
     """Handle incoming requests and route them to the appropriate handler."""
     try:
-        command_name, func_name, data = header
+        command_name, func_name, data_header = header
         if command_name is None or func_name is None:
             raise ValueError("Missing command_name or func_name in header")
 
-        args = ":?".join(data.keys()) + ":?"
+        args = ":?".join(data_header.keys()) + ":?"
         handler_key = f"{command_name}//{func_name}//{args}"
         handler = handlers.get(handler_key)
 

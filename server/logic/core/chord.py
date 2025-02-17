@@ -205,6 +205,19 @@ class ChordNode(Server, ChordReference):
         data = json.dumps({"id": self.id})
         return self.send_PUB_message(start, data)
 
+    def send_request_message(
+        self, node: ChordReference, header: str, data: List[str]
+    ) -> str:
+        message = [header] + data
+        socket = self.context.socket(zmq.REQ)
+
+        socket.connect(f"{node.address}:{node.data_port}")
+        socket.send_multipart(message)
+        response = socket.recv_json()
+        socket.close()
+
+        return response
+
     # endregion
 
     # region Threading Methods
@@ -338,6 +351,19 @@ class ChordNode(Server, ChordReference):
                 self.finger_table[i] = self._find_successor(start)
             remain = (remain + BATCH_SIZE) % SHA_1
             time.sleep(WAIT_CHECK)
+
+    # endregion
+
+    # region Request Methods
+    def _solver_request(self, header_str: str, rest_message: List[str]) -> str:
+        """Solve the request and return the result."""
+        while not self.leader.is_alive:
+            time.sleep(WAIT_CHECK * START_MOD)
+
+        if not self.im_the_leader:
+            return self.send_request_message(self.leader, header_str, rest_message)
+        else:
+            return Server._solver_request(self, header_str, rest_message)
 
     # endregion
 

@@ -12,23 +12,7 @@ networks:
         - subnet: 10.0.11.0/24
 
 services:
-  postgres:
-    image: postgres:14.1-alpine
-    container_name: postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    depends_on:
-      - router
-    ports:
-      - "5430:5432"
-    networks:
-      - server_network
-
-  server:
+  server1:
     working_dir: /app
     build:
       context: ./server
@@ -38,18 +22,67 @@ services:
       PROTOCOL: tcp
       HOST: 10.0.11.50
       PORT: 5555
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       ROUTER_IP: 10.0.11.2
     volumes:
       - server_data:/app
     depends_on:
-      - postgres
       - router
     ports:
       - "5555:5555"
     networks:
       server_network:
         ipv4_address: 10.0.11.50
+
+  server2:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PROTOCOL: tcp
+      HOST: 10.0.11.51
+      PORT: 5556
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      ROUTER_IP: 10.0.11.2
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "5556:5556"
+    networks:
+      server_network:
+        ipv4_address: 10.0.11.51
+
+  server3:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PROTOCOL: tcp
+      HOST: 10.0.11.52
+      PORT: 5557
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      ROUTER_IP: 10.0.11.2
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "5557:5557"
+    networks:
+      server_network:
+        ipv4_address: 10.0.11.52
 
   router:
     build:
@@ -62,7 +95,7 @@ services:
       server_network:
         ipv4_address: 10.0.11.2
 
-  client:
+  client1:
     working_dir: /app
     build:
       context: ./client
@@ -78,12 +111,31 @@ services:
     depends_on:
       - router
     ports:
-      - "5557:5555"
+      - "5558:5555"
+    networks:
+      - client_network
+
+  client2:
+    working_dir: /app
+    build:
+      context: ./client
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PROTOCOL: tcp
+      HOST: 10.0.11.51
+      PORT: 5556
+      ROUTER_IP: 10.0.10.2
+    volumes:
+      - client_data:/app
+    depends_on:
+      - router
+    ports:
+      - "5559:5556"
     networks:
       - client_network
 
 volumes:
-  postgres_data:
   server_data:
   router_data:
   client_data:

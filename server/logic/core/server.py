@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union, Tuple
 from dotenv import load_dotenv
 
 import os, time, zmq, json, logging, threading
@@ -80,21 +80,23 @@ class Server:
         self.poller.register(socket, poller_flags)
         logging.info(f"Connected socket on {url}")
 
-    def _solver_request(self, header_str: str) -> str:
+    def _solver_request(self, header_str: str, rest_message: List[str]) -> str:
         """Solve the request and return the result."""
-        command_name, func_name, dataset = Server.parse_header(header_str)
-        return handle_request((command_name, func_name, dataset))
+        header = Server.parse_header(header_str)
+        data = json.loads(rest_message[0].decode("utf-8"))
+        return handle_request(header, data)
 
     def _process_request(self, socket: zmq.Socket) -> None:
         """Process incoming requests and send responses."""
         try:
             message = socket.recv_multipart(flags=zmq.NOBLOCK)
-            decode = message[0].decode("utf-8")
+            header_code = message[0].decode("utf-8")
+            rest_message = message[1:]
 
             last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT).decode("utf-8")
             logging.info(f"Received a message from: {last_endpoint}")
 
-            result = self._solver_request(decode)
+            result = self._solver_request(header_code, rest_message)
             logging.info(f"Result: {result}")
 
             socket.send_multipart([result.encode("utf-8")])
