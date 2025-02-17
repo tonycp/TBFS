@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os, time, zmq, json, logging, threading
 
 from data.const import *
-from logic import handle_request
+from logic.handlers import *
 
 
 __all__ = ["Server"]
@@ -62,7 +62,7 @@ class Server:
     ) -> str:
         """Solve the request and return the result."""
         logging.info(f"Received a message from: {last_endpoint}")
-        header = Server.parse_header(header_str)
+        header = parse_header(header_str)
         data = json.loads(rest_message[0].decode("utf-8"))
         return handle_request(header, data)
 

@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, Union
 
 import zmq, hashlib, json
 
-from servers.server import Server
+from logic.handlers import *
 from data.const import *
 
 __all__ = ["ChordReference", "in_between"]
@@ -153,7 +153,7 @@ class ChordReference:
         return ChordReference(response, chord_port, data_port, context)
 
     def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> Dict[str, Any]:
-        header = Server.header_data(**CHORD_DATA_COMMANDS[chord_data])
+        header = header_data(**CHORD_DATA_COMMANDS[chord_data])
         return self._zmq_call(header, data)
 
     def _zmq_call(self, header: str, data: str) -> Dict[str, Any]:

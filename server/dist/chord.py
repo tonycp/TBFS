@@ -5,8 +5,8 @@ import threading, zmq
 import time, logging, json
 
 from data.const import *
+from logic.handlers import *
 from servers.configurable import Configurable
-from servers.server import Server
 
 from .chord_reference import ChordReference, in_between
 
@@ -185,7 +185,7 @@ class ChordNode(ChordReference, Configurable):
         threading.Thread(target=func, args=(header, data, mcast_addr, port)).start()
 
     def send_election_message(self, election: ELECTION) -> None:
-        start = Server.header_data(**ELECTION_COMMANDS[election])
+        start = header_data(**ELECTION_COMMANDS[election])
         data = json.dumps({"id": self.id})
         return self.send_PUB_message(start, data)
 

@@ -4,7 +4,7 @@ import threading, json, logging, time
 
 from dist.chord_reference import ChordReference
 from dist.chord import ChordNode
-from logic.handlers import handle_request
+from logic.handlers import *
 from data.const import *
 
 from .server import Server
@@ -44,7 +44,7 @@ class ChordServer(Server, ChordNode):
 
     def _handle_leader_request(self, header_str: str, rest_mesg: List[str]) -> str:
         """Handle the request as the leader and aggregate responses from other nodes."""
-        header = Server.parse_header(header_str)
+        header = parse_header(header_str)
         data = json.loads(rest_mesg[0].decode("utf-8"))
 
         resp = handle_request(header, data)
