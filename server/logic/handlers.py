@@ -7,6 +7,7 @@ __all__ = [
     "handle_request",
     "header_data",
     "parse_header",
+    "handlers_lider_conv",
     "Create",
     "Update",
     "Delete",
@@ -14,6 +15,11 @@ __all__ = [
     "GetAll",
     "Chord",
     "Election",
+    "LiderCreate",
+    "LiderUpdate",
+    "LiderDelete",
+    "LiderGet",
+    "LiderGetAll",
 ]
 
 handlers: Dict[
@@ -111,43 +117,77 @@ def create_handler(
     return handler
 
 
+def handlers_lider_conv(func_name: str):
+    return f"Lider{func_name}"
+
+
 def Create(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler("Create", dataset)
+    return create_handler(__name__, dataset)
 
 
 def Update(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler("Update", dataset)
+    return create_handler(__name__, dataset)
 
 
 def Delete(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler("Delete", dataset)
+    return create_handler(__name__, dataset)
 
 
 def Get(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler("Get", dataset)
+    return create_handler(__name__, dataset)
 
 
 def GetAll(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler("GetAll", dataset)
+    return create_handler(__name__, dataset)
 
 
 def Chord(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler("Chord", dataset)
+    return create_handler(__name__, dataset)
 
 
 def Election(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler("Election", dataset)
+    return create_handler(__name__, dataset)
+
+
+def LiderCreate(
+    dataset: Dict[str, Optional[Callable[[Any], bool]]]
+) -> Callable[[Callable[..., Any]], Callable[..., str]]:
+    return create_handler(__name__, dataset)
+
+
+def LiderUpdate(
+    dataset: Dict[str, Optional[Callable[[Any], bool]]]
+) -> Callable[[Callable[..., Any]], Callable[..., str]]:
+    return create_handler(__name__, dataset)
+
+
+def LiderDelete(
+    dataset: Dict[str, Optional[Callable[[Any], bool]]]
+) -> Callable[[Callable[..., Any]], Callable[..., str]]:
+    return create_handler(__name__, dataset)
+
+
+def LiderGet(
+    dataset: Dict[str, Optional[Callable[[Any], bool]]]
+) -> Callable[[Callable[..., Any]], Callable[..., str]]:
+    return create_handler(__name__, dataset)
+
+
+def LiderGetAll(
+    dataset: Dict[str, Optional[Callable[[Any], bool]]]
+) -> Callable[[Callable[..., Any]], Callable[..., str]]:
+    return create_handler(__name__, dataset)

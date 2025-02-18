@@ -42,7 +42,7 @@ class Server:
         logging.info(f"Connected socket on {url}")
 
     def _solver_request(
-        self, header_str: str, rest_message: List[str], last_endpoint: str
+        self, header_str: str, rest_message: List[bytes], last_endpoint: str
     ) -> str:
         """Solve the request and return the result."""
         logging.info(f"Received a message from: {last_endpoint}")

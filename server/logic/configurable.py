@@ -39,3 +39,12 @@ class Configurable:
         new_config = self._config.copy()
         new_config.update(updates)
         return Configurable(new_config)
+
+    def __getitem__(self, name):
+        try:
+            return super().__getitem__(name)
+        except Exception as e:
+            att = self._config.get(name)
+            if att:
+                return att
+            raise e

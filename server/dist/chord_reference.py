@@ -6,7 +6,7 @@ import zmq, hashlib, json
 from logic.handlers import *
 from data.const import *
 
-from server.logic.configurable import Configurable
+from logic.configurable import Configurable
 
 __all__ = ["ChordReference", "in_between"]
 

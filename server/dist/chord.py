@@ -6,7 +6,7 @@ import time, logging, json
 
 from data.const import *
 from logic.handlers import *
-from server.logic.configurable import Configurable
+from logic.configurable import Configurable
 
 from .chord_reference import ChordReference, in_between
 
@@ -177,9 +177,9 @@ class ChordNode(ChordReference):
         s.send_multipart(message)
         s.close()
 
-    def send_PUB_message(self, header: str, data: str) -> None:
+    def send_PUB_message(self, header: str, data: str, port: int = None) -> None:
         mcast_addr = self._config[MCAST_ADDR_KEY]
-        port = self._config[NODE_PORT_KEY]
+        port = port or self._config[NODE_PORT_KEY]
         func = self.zmq_PUB
         threading.Thread(target=func, args=(header, data, mcast_addr, port)).start()
 
@@ -187,12 +187,6 @@ class ChordNode(ChordReference):
         start = header_data(**ELECTION_COMMANDS[election])
         data = json.dumps({"id": self.id, "ip": self.ip})
         self.send_PUB_message(start, data)
-
-    def send_broadcast_notification(self) -> str:
-        """Broadcast the leader information to all nodes."""
-        header = header_data(**CHORD_DATA_COMMANDS[CHORD_DATA.PON_CALL])
-        data = json.dumps({"id": self.id, "ip": self.ip})
-        self.send_PUB_message(header, data)
 
     def send_request_message(
         self, node: ChordReference, header: str, data: List[str], port: int

@@ -1,12 +1,13 @@
-from typing import Any, List, Optional, Dict, Union
+import socket
+from typing import Any, List, Optional, Dict, Tuple, Union
 
 import threading, json, logging, time
 
-from dist.chord_reference import ChordReference
 from dist.chord import ChordNode
 from logic.configurable import Configurable
 from logic.handlers import *
 from data.const import *
+from dist.chord_reference import ChordReference
 
 from .server import Server
 
@@ -16,17 +17,29 @@ __all__ = ["ChordServer"]
 class ChordServer(Server, ChordNode):
     def __init__(self, config: Optional[Configurable] = None):
         config = config or Configurable()
-        Server.__init__(self, config)
         ChordNode.__init__(self, config)
+        Server.__init__(self, config)
 
-    # region Request Methods
+    def send_broadcast_notification(self) -> str:
+        """Broadcast the leader information to all nodes."""
+        data = json.dumps({"id": self.id, "ip": self.ip})
+        port = DEFAULT_BROADCAST_PORT
+
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.sendto(data.encode("utf-8"), ("255.255.255.255", port))
+            time.sleep(WAIT_CHECK)
+
+    def _is_node_request(self, last_endpoint: str) -> bool:
+        node_port = self._config.get(NODE_PORT_KEY)
+        return last_endpoint.endswith(f":{node_port}")
+
     def _is_leader_request(self, last_endpoint: str) -> bool:
         """Check if the request is from the leader based on the endpoint."""
-        leader_port = self._config.get(NODE_PORT_KEY)
-        return last_endpoint.endswith(f":{leader_port}")
+        return last_endpoint.endswith(f"{self.leader.ip}:{self.leader.data_port}")
 
     def _solver_request(
-        self, header_str: str, rest_mesg: List[str], last_endpoint: str
+        self, header_str: str, rest_mesg: List[bytes], last_endpoint: str
     ) -> str:
         """Solve the request and return the result."""
         logging.info(f"Received a message from: {last_endpoint}")
@@ -36,65 +49,55 @@ class ChordServer(Server, ChordNode):
             time.sleep(WAIT_CHECK * START_MOD)
 
         is_leader_req = self._is_leader_request(last_endpoint)
+        is_node_req = self._is_node_request(last_endpoint)
 
         if not self.im_the_leader and not is_leader_req:
             node, port = self.leader, self.data_port
             return self.send_request_message(node, header_str, rest_mesg, port)
-        if is_leader_req:
-            return handle_request(header_str, rest_mesg)
-        return self._handle_leader_request(header_str, rest_mesg)
 
-    def _handle_leader_request(self, header_str: str, rest_mesg: List[str]) -> str:
-        """Handle the request as the leader and aggregate responses from other nodes."""
         header = parse_header(header_str)
-        data = json.loads(rest_mesg[0].decode("utf-8"))
+        data = rest_mesg[0].decode("utf-8")
 
-        resp = handle_request(header, data)
-        all_resp = self._aggregate_data_from_nodes(header_str, rest_mesg, resp)
-        # Process the request with the aggregated data
-        return all_resp
+        if is_leader_req or is_node_req:
+            return handle_request(header, data)
+        return self._handle_leader_request(header, data)
 
-    def _aggregate_data_from_nodes(
-        self, header_str: str, rest_mesg: List[str], resp: str
-    ) -> Dict[str, Any]:
-        """Aggregate data from other nodes."""
-        aggregated_data = {}
-        self._update_data(aggregated_data, resp)
+    def _handle_leader_request(
+        self, header: Tuple[str, str, Dict[str, Any]], data: Dict[str, Any]
+    ) -> str:
+        """Handle the request as the leader and aggregate responses from other nodes."""
+        command, func, dataset = header
+        func = handlers_lider_conv(func)
+        header = command, func, dataset
 
-        # Notify all nodes and collect their responses
-        for node in self._get_all_nodes():
-            port = node.data_port
-            response = self.send_request_message(node, header_str, rest_mesg, port)
-            self._update_data(aggregated_data, response)
+        handle_request(header, data)
 
-        return aggregated_data
+    def _broadcast_server(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((self.ip, DEFAULT_BROADCAST_PORT))
+        sock.listen(4)
 
-    def _update_data(self, aggregated_data: Dict[str, Any], response: str) -> None:
-        """Update the aggregated data with the response."""
-        response_data = json.loads(response)
-        for key, value in response_data.items():
-            if key in aggregated_data:
-                aggregated_data[key].update(value)
-            else:
-                aggregated_data[key] = value
+        while True:
+            time.sleep(WAIT_CHECK * START_MOD)
+            if not self.im_the_leader:
+                continue
 
-    def _get_all_nodes(self) -> List[ChordReference]:
-        """Get a list of all nodes in the network."""
-        if self.successor.id == self.id:
-            return []
+            threading.Thread(target=self.send_broadcast_notification).start()
+            conn, addr = sock.accept()
 
-        nodes = [self.successor]
-        current_node = self.successor
+            # Refuse self messages
+            if addr[0] == self.ip:
+                continue
 
-        while current_node != self:
-            nodes.append(current_node.successor)
-            current_node = current_node.successor
-
-        return nodes
-
-    # endregion
+            data = json.loads(conn.recv(1024).decode("utf-8"))
+            ref_config = self._config.copy_with_updates({HOST_KEY: data["id"]})
+            ChordReference(ref_config, self.context).join(self)
+            self.im_the_leader = False
+            self.leader = None
 
     def run(self) -> None:
         # Start threads
+        threading.Thread(target=self._broadcast_server, daemon=True).start()
         ChordNode.run(self)
         Server.run(self)
