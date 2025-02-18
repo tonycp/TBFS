@@ -185,8 +185,14 @@ class ChordNode(ChordReference):
 
     def send_election_message(self, election: ELECTION) -> None:
         start = header_data(**ELECTION_COMMANDS[election])
-        data = json.dumps({"id": self.id})
-        return self.send_PUB_message(start, data)
+        data = json.dumps({"id": self.id, "ip": self.ip})
+        self.send_PUB_message(start, data)
+
+    def send_broadcast_notification(self) -> str:
+        """Broadcast the leader information to all nodes."""
+        header = header_data(**CHORD_DATA_COMMANDS[CHORD_DATA.PON_CALL])
+        data = json.dumps({"id": self.id, "ip": self.ip})
+        self.send_PUB_message(header, data)
 
     def send_request_message(
         self, node: ChordReference, header: str, data: List[str], port: int

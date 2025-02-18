@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any
 import logging
 
 from data.const import ELECTION, HOST_KEY
-from logic.handlers import Chord, Election
+from logic.handlers import Chord, Election, Broadcast, Join
 
 from .chord import ChordNode
 from .chord_reference import ChordReference, bully
@@ -38,7 +38,9 @@ def finding_call(function_name: str, key: int) -> Dict[str, Any]:
 @Chord({"function_name": str, "node": str})
 def notify_call(function_name: str, node: str) -> Dict[str, Any]:
     func = _chord_server.__dict__.get(function_name)
-    result = func(node) if func else None
+    updated_config = _chord_server._config.copy_with_updates({HOST_KEY: node})
+    ref = ChordReference(updated_config, _chord_server.context)
+    result = func(ref) if func else None
     return {
         "message": "Notify",
         "result": result,
@@ -51,8 +53,8 @@ def pon_call(message: str) -> Dict[str, Any]:
 
 
 @Election({"id": int})
-def election_call(id: int) -> Dict[str, Any]:
-    logging.warning(f"Election message received form: {id}")
+def election_call(id: int, ip: str) -> Dict[str, Any]:
+    logging.warning(f"Election message received form: {ip}")
 
     if not _chord_server.in_election:
         _chord_server.in_election = True
@@ -66,7 +68,7 @@ def election_call(id: int) -> Dict[str, Any]:
 
 @Election({"id": int, "ip": str})
 def winner_call(id: int, ip: str) -> None:
-    logging.info(f"Winner message received form: {id}")
+    logging.info(f"Winner message received form: {ip}")
 
     is_bully = bully(_chord_server.id, id)
     have_leader = _chord_server.leader and not bully(id, _chord_server.leader.id)
@@ -78,8 +80,8 @@ def winner_call(id: int, ip: str) -> None:
 
 
 @Election({"id": int})
-def ok_call(id: int) -> None:
-    logging.info(f"OK message received form: {id}")
+def ok_call(id: int, ip: str) -> None:
+    logging.info(f"OK message received form: {ip}")
 
     if _chord_server.leader and bully(id, _chord_server.leader.id):
         _chord_server.leader = id

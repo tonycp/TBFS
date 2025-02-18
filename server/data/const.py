@@ -45,7 +45,7 @@ ELECTION_COMMANDS = {
     ELECTION.START: {
         "command_name": "Election",
         "function": "election_call",
-        "dataset": ["id"],
+        "dataset": ["id", "ip"],
     },
     ELECTION.WINNER: {
         "command_name": "Election",
@@ -55,7 +55,7 @@ ELECTION_COMMANDS = {
     ELECTION.OK: {
         "command_name": "Election",
         "function": "ok_call",
-        "dataset": ["id"],
+        "dataset": ["id", "ip"],
     },
 }
 
@@ -66,6 +66,7 @@ class CHORD_DATA(Enum):
     FIND_CALL = 3
     NOTIFY_CALL = 4
     PON_CALL = 5
+    JOIN_CALL = 6
 
 
 CHORD_DATA_COMMANDS = {

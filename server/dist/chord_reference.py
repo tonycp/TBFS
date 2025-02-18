@@ -126,7 +126,7 @@ class ChordReference:
         return self._send_chord_message(CHORD_DATA.FIND_CALL, data)["node"]
 
     def _call_notify_methods(self, function_name: str, node: ChordReference) -> None:
-        data = json.dumps({"function_name": function_name, "node": node.id})
+        data = json.dumps({"function_name": function_name, "node": node.ip})
         self._send_chord_message(CHORD_DATA.NOTIFY_CALL, data)
 
     def _get_property(self, property: str) -> Any:
