@@ -54,8 +54,8 @@ class Server:
         """Process incoming requests and send responses."""
         try:
             message = socket.recv_multipart(flags=zmq.NOBLOCK)
-
             last_endpoint = socket.getsockopt(zmq.LAST_ENDPOINT).decode("utf-8")
+
             header_code = message[0].decode("utf-8")
             rest_message = message[1:]
 
@@ -76,9 +76,9 @@ class Server:
         """Start listening for incoming requests and process them."""
         while True:
             events = self.poller.poll()
-            for socket_event, event in events:
+            for sock, event in events:
                 if event == zmq.POLLIN:
-                    self._process_request(socket_event)
+                    self._process_request(sock)
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def run(self) -> None:

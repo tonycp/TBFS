@@ -1,4 +1,4 @@
-from typing import Callable, Any, Dict, Optional, Tuple
+from typing import Callable, Any, Dict, List, Optional, Tuple
 
 import json, logging
 
@@ -38,7 +38,7 @@ def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> st
     )
 
 
-def parse_header(header_str: str) -> Tuple[str, str, Dict[str, Any]]:
+def parse_header(header_str: str) -> Tuple[str, str, List[str]]:
     """Parse the header string and return the command name, function name, and dataset."""
     if not header_str:
         raise ValueError("Header is empty")
@@ -75,16 +75,14 @@ def _load_data(
     return result
 
 
-def handle_request(
-    header: Tuple[str, str, Dict[str, Any]], data: Dict[str, Any]
-) -> str:
+def handle_request(header: Tuple[str, str, List[str]], data: Dict[str, Any]) -> str:
     """Handle incoming requests and route them to the appropriate handler."""
     try:
         command_name, func_name, data_header = header
         if command_name is None or func_name is None:
             raise ValueError("Missing command_name or func_name in header")
 
-        args = ":?".join(data_header.keys()) + ":?"
+        args = ":?".join(data_header) + ":?"
         handler_key = f"{command_name}//{func_name}//{args}"
         handler = handlers.get(handler_key)
 
@@ -92,7 +90,7 @@ def handle_request(
             raise ValueError("Unknown command name or dataset")
 
         handler_func, dataset = handler
-        return handler_func(**_load_data(data, dataset))
+        return handler_func(_load_data(data, dataset))
     except Exception as e:
         logging.error(f"Error handling request: {e}")
         return json.dumps({"error": str(e)})
@@ -107,10 +105,11 @@ def create_handler(
     def handler(func: Callable[..., Any]) -> Callable[..., str]:
         args = ":?".join(dataset.keys()) + ":?"
         index = f"{command_name}//{func.__name__}//{args}"
-        handlers[index] = (func, dataset)
 
         def wrapper(data: Dict[str, Any]) -> str:
-            return json.dumps(func(**data)).encode("utf-8")
+            return json.dumps(func(**data))
+
+        handlers[index] = (wrapper, dataset)
 
         return wrapper
 
@@ -124,70 +123,70 @@ def handlers_lider_conv(func_name: str):
 def Create(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("Create", dataset)
 
 
 def Update(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("Update", dataset)
 
 
 def Delete(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("Delete", dataset)
 
 
 def Get(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("Get", dataset)
 
 
 def GetAll(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("GetAll", dataset)
 
 
 def Chord(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("Chord", dataset)
 
 
 def Election(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("Election", dataset)
 
 
 def LiderCreate(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("LiderCreate", dataset)
 
 
 def LiderUpdate(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("LiderUpdate", dataset)
 
 
 def LiderDelete(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("LiderDelete", dataset)
 
 
 def LiderGet(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("LiderGet", dataset)
 
 
 def LiderGetAll(
     dataset: Dict[str, Optional[Callable[[Any], bool]]]
 ) -> Callable[[Callable[..., Any]], Callable[..., str]]:
-    return create_handler(__name__, dataset)
+    return create_handler("LiderGetAll", dataset)

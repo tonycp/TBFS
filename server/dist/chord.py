@@ -25,7 +25,7 @@ class ChordNode(ChordReference):
         ChordReference.__init__(self, config)
 
         self.successor: ChordReference = self
-        self.leader: Optional[ChordReference] = None
+        self.leader: Optional[ChordReference] = self
         self.predecessor: Optional[ChordReference] = None
         self.finger_table: List[Optional[ChordReference]] = [self] * SHA_1
         self.im_the_leader: bool = True
@@ -169,40 +169,6 @@ class ChordNode(ChordReference):
 
     # endregion
 
-    # region Broadcast Methods
-    def zmq_PUB(self, header: str, data: str, port: int) -> None:
-        message = [header.encode("utf-8"), data.encode("utf-8")]
-        s = self.context.socket(zmq.PUB)
-        s.bind(f"tcp://*:{port}")
-        s.send_multipart(message)
-        s.close()
-
-    def send_PUB_message(self, header: str, data: str, port: int = None) -> None:
-        port = port or self._config[NODE_PORT_KEY]
-        func = self.zmq_PUB
-        threading.Thread(target=func, args=(header, data, port)).start()
-
-    def send_election_message(self, election: ELECTION) -> None:
-        start = header_data(**ELECTION_COMMANDS[election])
-        data = json.dumps({"id": self.id, "ip": self.ip})
-        self.send_PUB_message(start, data)
-
-    def send_request_message(
-        self, node: ChordReference, header: str, data: List[str], port: int
-    ) -> str:
-        """Send a request message to the specified node and return the response."""
-        message = [header] + data
-        socket = self.context.socket(zmq.REQ)
-
-        socket.connect(f"{node.protocol}://{node.ip}:{port}")
-        socket.send_multipart(message)
-        response = socket.recv_json()
-        socket.close()
-
-        return response
-
-    # endregion
-
     # region Threading Methods
     def _stabilize(self) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
@@ -283,38 +249,6 @@ class ChordNode(ChordReference):
                 logging.warning("No predecessor found")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
-    def _election_loop(self) -> None:
-        time.sleep(WAIT_CHECK * START_MOD)
-
-        socket = self.context.socket(zmq.SUB)
-        url = f"tcp://{self._config[HOST_KEY]}:{self._config[NODE_PORT_KEY]}"
-        self._connect_socket(socket, url, zmq.POLLIN)
-        socket.setsockopt_string(zmq.SUBSCRIBE, "")
-
-        counter = 0
-        while True:
-            if not self.leader and not self.in_election:
-                self.send_election_message(ELECTION.START)
-                logging.info("Starting leader election...")
-                self.in_election = True
-                self.leader = None
-            elif self.in_election:
-                counter += 1
-                logging.info(f"waiting... {counter}")
-                if counter == ELECTION_TIMEOUT:
-                    if not self.leader and self.im_the_leader:
-                        self.im_the_leader = True
-                        self.leader = self
-                        self.in_election = False
-                        self.send_election_message(ELECTION.WINNER)
-                        logging.info(f"I am the new leader")
-                    counter = 0
-                    self.in_election = False
-            else:
-                logging.info(f"Leader: {self.leader.id}")
-                time.sleep(WAIT_CHECK)
-            time.sleep(WAIT_CHECK * ELECTION_MOD)
-
     def _leader_checker(self) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
 
@@ -341,6 +275,5 @@ class ChordNode(ChordReference):
         # Start threads
         threading.Thread(target=self._stabilize, daemon=True).start()
         threading.Thread(target=self._check_predecessor, daemon=True).start()
-        threading.Thread(target=self._election_loop, daemon=True).start()
         threading.Thread(target=self._leader_checker, daemon=True).start()
         threading.Thread(target=self._fix_fingers, daemon=True).start()

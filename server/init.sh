@@ -11,15 +11,17 @@ EOL
 
 echo ".env file created."
 
-# Configurar PostgreSQL
-pg_ctl initdb -D /var/lib/postgresql/data
-pg_ctl start -D /var/lib/postgresql/data -l logfile
-psql --username=${POSTGRES_USER} --command="CREATE DATABASE ${POSTGRES_DB};"
+# Inicializa la base de datos de PostgreSQL
+su postgres -c "initdb -D /var/lib/postgresql/data"
+su postgres -c "pg_ctl -D /var/lib/postgresql/data -l logfile start"
 
 # Establecer la ruta predeterminada
 ip route del default
 ip route add default via ${ROUTER_IP}
 
-# Mantener el contenedor en ejecución
+# Ejecutar scripts de la aplicación
 python create_db.py
 python app.py
+
+# Mantener el contenedor en ejecución
+tail -f /dev/null
