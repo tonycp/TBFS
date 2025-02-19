@@ -22,12 +22,13 @@ class ChordServer(Server, ChordNode):
 
     def send_broadcast_notification(self) -> str:
         """Broadcast the leader information to all nodes."""
-        data = json.dumps({"id": self.id, "ip": self.ip})
+        data = json.dumps({"ip": self.ip})
         port = DEFAULT_BROADCAST_PORT
+        multicast_ip = self._config[MCAST_ADDR_KEY]
 
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            sock.sendto(data.encode("utf-8"), ("255.255.255.255", port))
+            sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+            sock.sendto(data.encode("utf-8"), (multicast_ip, port))
             time.sleep(WAIT_CHECK)
 
     def _is_node_request(self, last_endpoint: str) -> bool:
@@ -72,11 +73,17 @@ class ChordServer(Server, ChordNode):
 
         handle_request(header, data)
 
-    def _broadcast_server(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def _multicast_server(self):
+        multicast_ip = self._config[MCAST_ADDR_KEY]
+        membership = socket.inet_aton(multicast_ip) + socket.inet_aton("0.0.0.0")
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, membership)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self.ip, DEFAULT_BROADCAST_PORT))
-        sock.listen(4)
+        sock.bind(("", DEFAULT_BROADCAST_PORT))
+
+        sock.settimeout(WAIT_CHECK)
+        logging.info(f"Starting the multicast server in {self.ip}...")
 
         while True:
             time.sleep(WAIT_CHECK * START_MOD)
@@ -84,20 +91,22 @@ class ChordServer(Server, ChordNode):
                 continue
 
             threading.Thread(target=self.send_broadcast_notification).start()
-            conn, addr = sock.accept()
+            conn, addr = sock.recvfrom(1024)
 
-            # Refuse self messages
-            if addr[0] == self.ip:
+            if self.ip == addr[0] or self.ip == "127.0.0.1":
                 continue
 
-            data = json.loads(conn.recv(1024).decode("utf-8"))
-            ref_config = self._config.copy_with_updates({HOST_KEY: data["id"]})
+            logging.info(f"Received a multicast message: {conn} from: {addr}")
+
+            data = json.loads(conn.decode("utf-8"))
+
+            ref_config = self._config.copy_with_updates({HOST_KEY: data["ip"]})
             ChordReference(ref_config, self.context).join(self)
             self.im_the_leader = False
             self.leader = None
 
     def run(self) -> None:
         # Start threads
-        threading.Thread(target=self._broadcast_server, daemon=True).start()
+        threading.Thread(target=self._multicast_server, daemon=True).start()
         ChordNode.run(self)
         Server.run(self)

@@ -170,18 +170,17 @@ class ChordNode(ChordReference):
     # endregion
 
     # region Broadcast Methods
-    def zmq_PUB(self, header: str, data: str, mcast_addr: str, port: int) -> None:
+    def zmq_PUB(self, header: str, data: str, port: int) -> None:
         message = [header.encode("utf-8"), data.encode("utf-8")]
         s = self.context.socket(zmq.PUB)
-        s.bind(f"tcp://{mcast_addr}:{port}")
+        s.bind(f"tcp://*:{port}")
         s.send_multipart(message)
         s.close()
 
     def send_PUB_message(self, header: str, data: str, port: int = None) -> None:
-        mcast_addr = self._config[MCAST_ADDR_KEY]
         port = port or self._config[NODE_PORT_KEY]
         func = self.zmq_PUB
-        threading.Thread(target=func, args=(header, data, mcast_addr, port)).start()
+        threading.Thread(target=func, args=(header, data, port)).start()
 
     def send_election_message(self, election: ELECTION) -> None:
         start = header_data(**ELECTION_COMMANDS[election])

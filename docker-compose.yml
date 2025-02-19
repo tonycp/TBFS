@@ -45,7 +45,7 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.51
-      PORT: 5556
+      PORT: 5555
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -69,7 +69,7 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.52
-      PORT: 5557
+      PORT: 5555
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -124,7 +124,7 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.51
-      PORT: 5556
+      PORT: 5555
       ROUTER_IP: 10.0.10.2
     volumes:
       - client_data:/app

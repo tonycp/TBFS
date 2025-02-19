@@ -1,4 +1,8 @@
 import logging, logging.handlers as handlers
+import socket
+
+from data.const import HOST_KEY
+from logic.configurable import Configurable
 from servers import ChordServer
 
 logging.basicConfig(
@@ -14,9 +18,11 @@ logging.basicConfig(
 
 
 if __name__ == "__main__":
-    server = ChordServer()
+    ip = str(socket.gethostbyname(socket.gethostname()))
+    config = Configurable({HOST_KEY: ip})
+    server = ChordServer(config)
     try:
-        logging.info("Starting the server...")
+        logging.info(f"Starting the server in {ip}...")
         server.run()
     except KeyboardInterrupt as e:
         logging.warning("Stopping the server...")
