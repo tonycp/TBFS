@@ -7,7 +7,7 @@ __all__ = [
     "handle_request",
     "header_data",
     "parse_header",
-    "handlers_lider_conv",
+    "handle_leader_conversion",
     "Create",
     "Update",
     "Delete",
@@ -116,7 +116,7 @@ def create_handler(
     return handler
 
 
-def handlers_lider_conv(func_name: str):
+def handle_leader_conversion(func_name: str):
     return f"Lider{func_name}"
 
 

@@ -2,6 +2,7 @@ import socket
 from typing import Any, List, Optional, Dict, Tuple, Union
 
 import threading, json, logging, time
+import selectors
 
 from dist.chord import ChordNode
 from logic.configurable import Configurable
@@ -19,8 +20,9 @@ class ChordServer(Server, ChordNode):
         config = config or Configurable()
         ChordNode.__init__(self, config)
         Server.__init__(self, config)
+        self._subscribe_read_port(self._config[NODE_PORT_KEY])
 
-    def send_multicast_notification(self) -> str:
+    def send_multicast_notification(self) -> None:
         """Multicast the leader information to all nodes."""
         data = json.dumps({"ip": self.ip})
         port = DEFAULT_BROADCAST_PORT
@@ -40,10 +42,8 @@ class ChordServer(Server, ChordNode):
         """Check if the request is from the leader based on the endpoint."""
         return last_endpoint[0] == self.leader.ip
 
-    def _solver_request(self, header: dict, data: dict, addr: str) -> str:
+    def _solver_request(self, header: Dict[str, Any], data: Dict[str, Any], ) -> str:
         """Solve the request and return the result."""
-        logging.info(f"Received a message from: {addr}")
-
         while self.in_election or not self.leader:
             logging.warning("Waiting for new leader...")
             time.sleep(WAIT_CHECK * START_MOD)
@@ -66,10 +66,10 @@ class ChordServer(Server, ChordNode):
         self, header: Dict[str, Any], data: Dict[str, Any]
     ) -> str:
         """Handle the request as the leader and aggregate responses from other nodes."""
-        header["function"] = handlers_lider_conv(header["function"])
-        handle_request(header, data)
+        header["function"] = handle_leader_conversion(header["function"])
+        return handle_request(header, data)
 
-    def _multicast_server(self):
+    def _multicast_server(self) -> None:
         multicast_ip = self._config[MCAST_ADDR_KEY]
         membership = socket.inet_aton(multicast_ip) + socket.inet_aton("0.0.0.0")
 
@@ -138,4 +138,4 @@ class ChordServer(Server, ChordNode):
         ChordNode.run(self)
         threading.Thread(target=self._multicast_server, daemon=True).start()
         threading.Thread(target=self._election_loop, daemon=True).start()
-        Server.run(self)
+        self._start_listening()
