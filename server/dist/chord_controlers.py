@@ -54,7 +54,7 @@ def finding_call(function_name: str, key: int) -> Dict[str, Any]:
 def notify_call(function_name: str, node: str) -> Dict[str, Any]:
     logging.info(f"Notify message received for {function_name}, by ip: {node}")
     updated_config = _chord_server._config.copy_with_updates({HOST_KEY: node})
-    ref = ChordReference(updated_config, _chord_server.context)
+    ref = ChordReference(updated_config)
 
     result = None
     if hasattr(_chord_server, function_name):
@@ -99,7 +99,7 @@ def winner_call(id: int, ip: str) -> None:
     have_leader = _chord_server.leader and not bully(id, _chord_server.leader.id)
     if not is_bully and not have_leader:
         updated_config = _chord_server._config.copy_with_updates({HOST_KEY: ip})
-        _chord_server.leader = ChordReference(updated_config, _chord_server.context)
+        _chord_server.leader = ChordReference(updated_config)
         _chord_server.im_the_leader = _chord_server.id == id
         _chord_server.in_election = False
 

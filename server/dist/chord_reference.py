@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, Dict, Any, Union
 
-import zmq, hashlib, json
+import socket, hashlib, json, time
 
 from logic.handlers import *
 from data.const import *
@@ -29,20 +29,13 @@ class ChordReference:
     def __init__(
         self,
         config: Configurable,
-        context=zmq.Context(),
     ):
         self.protocol = config[PROTOCOL_KEY]
         self.ip = config[HOST_KEY]
         self.chord_port = config[NODE_PORT_KEY]
         self.data_port = config[PORT_KEY]
-        self.context = context
         self.id = ChordReference._hash_key(f"{self.ip}:{self.chord_port}")
         self._config = config
-
-        socket = self.context.socket(zmq.REQ)
-        socket.setsockopt(zmq.RCVTIMEO, 100000)
-        socket.connect(f"{self.protocol}://{self.ip}:{self.chord_port}")
-        self.socket = socket
 
     @staticmethod
     def _hash_key(key: str) -> int:
@@ -130,10 +123,10 @@ class ChordReference:
     def _call_finding_methods(self, function_name: str, key: int) -> ChordReference:
         data = json.dumps({"function_name": function_name, "key": key})
         logging.info(f"Calling {function_name} with key: {key}")
-        return self._send_chord_message(CHORD_DATA.FIND_CALL, data)["node"]
+        return ChordReference(self._send_chord_message(CHORD_DATA.FIND_CALL, data)["node"])
 
-    def _call_notify_methods(self, function_name: str, node: ChordReference) -> None:
-        data = json.dumps({"function_name": function_name, "node": node.ip})
+    def _call_notify_methods(self, function_name: str, node: Optional[ChordReference]) -> None:
+        data = json.dumps({"function_name": function_name, "node": node.ip if node else None})
         self._send_chord_message(CHORD_DATA.NOTIFY_CALL, data)
 
     def _get_property(self, property: str) -> Any:
@@ -147,29 +140,40 @@ class ChordReference:
     def _get_chord_reference(self, property: str) -> ChordReference:
         response = self._get_property(property)
         updated_config = self._config.copy_with_updates({HOST_KEY: response})
-        return ChordReference(updated_config, self.context)
+        return ChordReference(updated_config)
 
-    def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> Dict[str, Any]:
+    def _send_chord_message(
+        self, chord_data: CHORD_DATA, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         header = header_data(**CHORD_DATA_COMMANDS[chord_data])
-        return self._zmq_call(header, data)
+        return self._socket_call(header, data)
 
-    def _zmq_call(self, header: str, data: str) -> Dict[str, Any]:
-        message = [header.encode("utf-8"), data.encode("utf-8")]
-        port, socket = self.chord_port, self.socket
+    def _socket_call(
+        self, header: str, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        message = f"{header}\n{json.dumps(data)}"
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)  # Establecer un timeout de 5 segundos
+        port = self.data_port
 
-        logging.info(f"Call to chord reference: {self.ip}:{self.chord_port}")
+        logging.info(f"Call to chord reference: {self.ip}:{port}")
         try:
-            socket.send_multipart(message)
-            response = socket.recv_json()
+            sock.connect((self.ip, port))
+            sock.sendall(message.encode("utf-8"))
+            response = sock.recv(1024)
             logging.info(f"Get response: {response} from {self.ip}:{port}")
-        except zmq.error.Again:
+            return json.loads(response.decode("utf-8"))
+        except ConnectionRefusedError:
+            logging.error(f"Connection refused by {self.ip}:{port}")
+            return {"error": "Connection refused"}
+        except socket.timeout:
             logging.error(f"Timeout occurred receiving with {self.ip}:{port}")
-            response = {"error": "Timeout"}
+            return {"error": "Timeout"}
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            response = {"error": str(e)}
-
-        return response
+            return {"error": str(e)}
+        finally:
+            sock.close()
 
     def _ping_pong(self) -> bool:
         data = json.dumps({"message": "Ping"})
