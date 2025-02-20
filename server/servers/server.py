@@ -23,13 +23,19 @@ class Server:
     def _parse_message(self, message: bytes) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Parse the incoming message and return the header and data."""
         try:
-            header_str, data_str = message.split(b"\n", 1)
-            header = json.loads(header_str.decode("utf-8"))
-            data = json.loads(data_str.decode("utf-8"))
+            message_dict: dict = json.loads(message.decode("utf-8"))
+            header = message_dict.get("header", {})
+            data = message_dict.get("data", {})
             return header, data
         except ValueError as e:
             logging.error(f"Error parsing message: {e}")
             raise
+
+    def _process_mesage(self, message: bytes, addr: Tuple[str, int]) -> None:
+        header, data = self._parse_message(message)
+        logging.info(f"Processing message from {addr}: {header}")
+
+        return self._solver_request(header, data)
 
     def _process_request(self, conn: socket.socket, mask: int) -> None:
         """Process incoming requests and send responses."""
@@ -37,20 +43,18 @@ class Server:
         try:
             message = conn.recv(1024)
             if not message:
-                pass
-            header, data = self._parse_message(message)
-            logging.info(f"Header: {header}, Data: {data}")
+                return
 
-            result = self._solver_request(header, data)
-            logging.info(f"Result: {result}")
+            result = self._process_mesage(message, addr)
+            logging.info(f"Processed result: {result}")
 
             conn.sendall(result.encode("utf-8"))
-            logging.info(f"Response sent to: {addr}")
+            logging.info(f"Response sent to {addr}")
         except ValueError as e:
-            logging.error(f"Error processing message: {e}")
+            logging.error(f"Error processing message from {addr}: {e}")
 
             conn.sendall(json.dumps({"error": str(e)}).encode("utf-8"))
-            logging.info(f"Error sent to: {addr}")
+            logging.info(f"Error response sent to {addr}")
         finally:
             self.selector.unregister(conn)
             conn.close()
