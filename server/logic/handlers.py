@@ -29,21 +29,18 @@ handlers: Dict[
 
 def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> str:
     """Create a header string from the command name, function name, and dataset."""
-    return json.dumps(
-        {
-            "command_name": command_name,
-            "function": function,
-            "dataset": dataset,
-        }
-    )
+    return {
+        "command_name": command_name,
+        "function": function,
+        "dataset": dataset,
+    }
 
 
-def parse_header(header_str: str) -> Tuple[str, str, List[str]]:
+def parse_header(header: Dict[str, Any]) -> Tuple[str, str, List[str]]:
     """Parse the header string and return the command name, function name, and dataset."""
-    if not header_str:
+    if not header:
         raise ValueError("Header is empty")
 
-    header: Dict[str, Any] = json.loads(header_str)
     return (
         header.get("command_name"),
         header.get("function"),

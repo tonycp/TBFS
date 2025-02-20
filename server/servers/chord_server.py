@@ -22,6 +22,9 @@ class ChordServer(Server, ChordNode):
         Server.__init__(self, config)
         self._subscribe_read_port(self._config[NODE_PORT_KEY])
 
+        self.is_leader_req = False
+        self.is_node_req = False
+
     def send_multicast_notification(self) -> None:
         """Multicast the leader information to all nodes."""
         data = json.dumps({"ip": self.ip})
@@ -34,20 +37,43 @@ class ChordServer(Server, ChordNode):
             sock.sendto(data.encode("utf-8"), (multicast_ip, port))
             time.sleep(WAIT_CHECK)
 
-    def _is_node_request(self, last_endpoint: str) -> bool:
+    def send_request_message(
+        self,
+        node: ChordReference,
+        header: Tuple[str, str, List[str]],
+        data: List[str],
+        port: int,
+    ) -> str:
+        """Send a request message to the specified node and return the response."""
+        header_str = header_data(*header)
+        message = json.dumps({"header": header_str, "data": data})
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((node.ip, port))
+            sock.sendall(message.encode("utf-8"))
+            response = sock.recv(1024)
+        return response.decode("utf-8")
+
+    def _is_node_request(self, addr: Tuple[str, int]) -> bool:
         node_port = self._config[NODE_PORT_KEY]
-        return last_endpoint.endswith(f":{node_port}")
+        return addr[1] == node_port
 
-    def _is_leader_request(self, last_endpoint: str) -> bool:
+    def _is_leader_request(self, addr: Tuple[str, int]) -> bool:
         """Check if the request is from the leader based on the endpoint."""
-        return last_endpoint[0] == self.leader.ip
+        return addr[0] == self.leader.ip
 
-    def _solver_request(self, header: Dict[str, Any], data: Dict[str, Any], ) -> str:
-        """Solve the request and return the result."""
+    def _process_mesage(self, message: bytes, addr: Tuple[str, int]) -> None:
         while self.in_election or not self.leader:
             logging.warning("Waiting for new leader...")
             time.sleep(WAIT_CHECK * START_MOD)
+        return Server._process_mesage(self, message, addr)
 
+    def _solver_request(
+        self,
+        header: Tuple[str, str, List[str]],
+        data: Dict[str, Any],
+        addr: Tuple[str, int],
+    ) -> str:
+        """Solve the request and return the result."""
         is_leader_req = self._is_leader_request(addr)
         is_node_req = self._is_node_request(addr)
 
@@ -58,16 +84,19 @@ class ChordServer(Server, ChordNode):
 
         if is_leader_req or is_node_req:
             logging.info("Handling the request as a node...")
-            return handle_request(header, data)
+            return Server._solver_request(self, header, data, addr)
         logging.info("Handling the request as leader...")
-        return self._handle_leader_request(header, data)
+        return self._handle_leader_request(header, data, addr)
 
     def _handle_leader_request(
-        self, header: Dict[str, Any], data: Dict[str, Any]
+        self,
+        header: Tuple[str, str, List[str]],
+        data: Dict[str, Any],
+        addr: Tuple[str, int],
     ) -> str:
         """Handle the request as the leader and aggregate responses from other nodes."""
-        header["function"] = handle_leader_conversion(header["function"])
-        return handle_request(header, data)
+        header[1] = handle_leader_conversion(header[1])
+        return Server._solver_request(self, header, data, addr)
 
     def _multicast_server(self) -> None:
         multicast_ip = self._config[MCAST_ADDR_KEY]
@@ -79,7 +108,7 @@ class ChordServer(Server, ChordNode):
         sock.bind(("", DEFAULT_BROADCAST_PORT))
 
         sock.settimeout(WAIT_CHECK)
-        logging.info(f"Starting the multicast server in {self.ip}...")
+        logging.info(f"Starting the multicast server on {self.ip}...")
 
         while True:
             time.sleep(WAIT_CHECK * START_MOD * START_MOD)
@@ -92,7 +121,7 @@ class ChordServer(Server, ChordNode):
             if self.ip == addr[0] or self.ip == "127.0.0.1":
                 continue
 
-            logging.info(f"Received a multicast message: {conn} from: {addr}")
+            logging.info(f"Received a multicast message: {conn} from {addr}")
 
             data = json.loads(conn.decode("utf-8"))
 
@@ -118,18 +147,18 @@ class ChordServer(Server, ChordNode):
                 self.leader = None
             elif self.in_election:
                 counter += 1
-                logging.info(f"waiting... {counter}")
+                logging.info(f"Waiting for election result... {counter}")
                 if counter == ELECTION_TIMEOUT:
                     if not self.leader and not self.im_the_leader:
                         self.im_the_leader = True
                         self.leader = self
                         self.in_election = False
                         self.send_election_message(ELECTION.WINNER)
-                        logging.info(f"I am the new leader")
+                        logging.info("I am the new leader")
                     counter = 0
                     self.in_election = False
             else:
-                logging.info(f"Leader: {self.leader.id}")
+                logging.info(f"Current leader: {self.leader.id}")
                 time.sleep(WAIT_CHECK)
             time.sleep(WAIT_CHECK * ELECTION_MOD)
 
@@ -137,5 +166,5 @@ class ChordServer(Server, ChordNode):
         # Start threads
         ChordNode.run(self)
         threading.Thread(target=self._multicast_server, daemon=True).start()
-        threading.Thread(target=self._election_loop, daemon=True).start()
+        # threading.Thread(target=self._election_loop, daemon=True).start()
         self._start_listening()
