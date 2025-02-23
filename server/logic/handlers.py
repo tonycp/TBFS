@@ -87,6 +87,7 @@ def handle_request(header: Tuple[str, str, List[str]], data: Dict[str, Any]) -> 
             raise ValueError("Unknown command name or dataset")
 
         handler_func, dataset = handler
+        logging.info(f"Handling request: {handler_key}")
         return handler_func(_load_data(data, dataset))
     except Exception as e:
         logging.error(f"Error handling request: {e}")

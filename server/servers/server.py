@@ -46,18 +46,22 @@ class Server:
     def _process_request(self, conn: socket.socket, mask: int, ori_port: int) -> None:
         """Process incoming requests and send responses."""
         addr = conn.getpeername()
-        addr = (addr[0], ori_port)
+        ori_addr = (addr[0], ori_port)
         try:
             message = conn.recv(1024)
             if message:
-                result = self._process_mesage(message, addr)
+                logging.info(f"Received message from {addr}")
+                result = self._process_mesage(message, ori_addr)
                 logging.info(f"Processed result: {result}")
 
                 conn.sendall(result.encode("utf-8"))
                 logging.info(f"Response sent to {addr}")
-            else:
+                
                 self.selector.unregister(conn)
                 conn.close()
+                logging.info(f"Connection closed with {addr}")
+        except BlockingIOError as e:
+            logging.warning(f"Resource temporarily unavailable: {addr} - {e}")
         except ValueError as e:
             logging.error(f"Error processing message from {addr}: {e}")
 
@@ -75,6 +79,7 @@ class Server:
         conn.setblocking(False)
         data = (self._process_request, ori_port)
         self.selector.register(conn, mask, data)
+        time.sleep(START_MOD)
         self._process_request(conn, mask, ori_port)
 
     def _subscribe_read_port(self, port: int, listen: int = 10) -> None:
@@ -94,7 +99,6 @@ class Server:
             for key, mask in events:
                 callback, port = key.data
                 callback(key.fileobj, mask, port)
-            time.sleep(ELECTION_MOD)
 
     def run(self) -> None:
         """Start the server threads."""

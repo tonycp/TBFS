@@ -36,7 +36,7 @@ class ChordReference:
         self.data_port = config[PORT_KEY]
         self.id = ChordReference._hash_key(f"{self.ip}:{self.chord_port}")
         self._config = config
-
+        
     @staticmethod
     def _hash_key(key: str) -> int:
         return int(hashlib.sha1(key.encode("utf-8")).hexdigest(), 16)
@@ -44,15 +44,15 @@ class ChordReference:
     # region Properties Methods
     @property
     def successor(self) -> ChordReference:
-        return self._get_chord_reference("id")
+        return self._get_chord_reference("successor")
 
     @property
     def predecessor(self) -> ChordReference:
-        return self._get_chord_reference("id")
+        return self._get_chord_reference("predecessor")
 
     @property
     def leader(self) -> ChordReference:
-        return self._get_chord_reference("id")
+        return self._get_chord_reference("leader")
 
     @property
     def im_the_leader(self) -> bool:
@@ -102,7 +102,9 @@ class ChordReference:
 
     # region Notification Methods
     def adopt_leader(self, node: Optional[ChordReference] = None) -> None:
+        logging.info(f"Adopting leader: {node.ip if node else 'self'}")
         self._call_notify_methods("adopt_leader", node)
+        logging.info(f"Leader adopted: {node.ip if node else 'self'}")
 
     def join(self, node: Optional[ChordReference] = None) -> None:
         self._call_notify_methods("join", node)
@@ -121,34 +123,47 @@ class ChordReference:
     # region Message Methods
 
     def _call_finding_methods(self, function_name: str, key: int) -> ChordReference:
-        data = {"function_name": function_name, "key": key}
         logging.info(f"Calling {function_name} with key: {key}")
+        data = {"function_name": function_name, "key": key}
         response = self._send_chord_message(CHORD_DATA.FIND_CALL, data)
+        logging.info(f"{function_name} call complete with result: {response}")
         updated_config = self._config.copy_with_updates({HOST_KEY: response["ip"]})
         return ChordReference(updated_config)
 
     def _call_notify_methods(
         self, function_name: str, node: Optional[ChordReference]
     ) -> None:
+        logging.info(f"Calling {function_name} with node: {node.ip if node else 'None'}")
         data = {"function_name": function_name, "node": node.ip if node else None}
         self._send_chord_message(CHORD_DATA.NOTIFY_CALL, data)
+        logging.info(f"{function_name} call complete")
 
     def _get_property(self, property: str) -> Any:
+        logging.info(f"Getting property: {property}")
         data = {"property": property}
-        return self._send_chord_message(CHORD_DATA.GET_PROPERTY, data)["value"]
+        response = self._send_chord_message(CHORD_DATA.GET_PROPERTY, data)
+        logging.info(f"Property {property} retrieved with value: {response['value']}")
+        return response["value"]
 
     def _set_property(self, property: str, value: Any) -> None:
+        logging.info(f"Setting property: {property} to value: {value}")
         data = {"property": property, "value": value}
         self._send_chord_message(CHORD_DATA.SET_PROPERTY, data)
+        logging.info(f"Property {property} set to value: {value}")
 
     def _get_chord_reference(self, property: str) -> ChordReference:
+        logging.info(f"Getting chord reference for property: {property}")
         response = self._get_property(property)
         updated_config = self._config.copy_with_updates({HOST_KEY: response})
+        logging.info(f"Chord reference for {property} retrieved: {response}")
         return ChordReference(updated_config)
 
     def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> Dict[str, Any]:
+        logging.info(f"Sending chord message with data: {data}")
         header = header_data(**CHORD_DATA_COMMANDS[chord_data])
-        return self._socket_call(header, data)
+        response = self._socket_call(header, data)
+        logging.info(f"Chord message sent with response: {response}")
+        return response
 
     def _socket_call(self, header: str, data: Dict[str, Any]) -> Dict[str, Any]:
         message = json.dumps({"header": header, "data": data})
@@ -178,8 +193,10 @@ class ChordReference:
             sock.close()
 
     def _ping_pong(self) -> bool:
+        logging.info("Sending ping message")
         data = {"message": "Ping"}
         response = self._send_chord_message(CHORD_DATA.PON_CALL, data)
+        logging.info("Ping message sent with response: Pong")
         return response.get("message") == "Pong"
 
     # endregion

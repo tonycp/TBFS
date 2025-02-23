@@ -31,7 +31,7 @@ class ChordNode(ChordReference):
         self.im_the_leader: bool = True
         self.in_election: bool = False
 
-    # region Properties Methods
+            # region Properties Methods
     @property
     def successor(self) -> ChordReference:
         return self._successor
@@ -107,12 +107,14 @@ class ChordNode(ChordReference):
 
     # region Notification Methods
     def adopt_leader(self, node: Optional[ChordReference] = None) -> None:
+        logging.info(f"Adopting leader: {node.ip if node else 'self'}")
         self.leader = node or self
         self.im_the_leader = node is self
+        logging.info(f"Leader adopted: {self.leader.ip}, I am the leader: {self.im_the_leader}")
 
     def join(self, node: Optional[ChordReference] = None) -> None:
         if node:
-            logging.info(f"Joining to {node.id}...")
+            logging.info(f"Joining to {node.ip}...")
             if not node.is_alive:
                 raise Exception(f"There is no node using the address {node.ip}")
 
@@ -132,32 +134,32 @@ class ChordNode(ChordReference):
             # self.predpred = None
             self.adopt_leader()
 
-        logging.info(f"Node {self.id} joined the network")
+        logging.info(f"Node {self.ip} joined the network")
 
     def notify(self, node: ChordReference) -> None:
         if node.id == self.id:
             return
-        logging.info(f"Notifying {node.id}...")
+        logging.info(f"Notifying {node.ip}...")
         if self.predecessor is None:
             self.predecessor = node
             # self.predpred = node.pred
             # pull replication to predecessor
             # self.update_replication(False, True)
 
-        elif node.is_alive and in_between(node.id, self.predecessor, self.id):
+        elif node.is_alive and in_between(node.id, self.predecessor.id, self.id):
             self.predecessor = node
             # self.predpred = self.pred
             # push replication delegation to predecessor
             # self.update_replication(True, False)
-        logging.info(f"Node {node.id} notified {self.id}")
+        logging.info(f"Node {node.ip} notified {self.ip}")
 
     def reverse_notify(self, node: ChordReference) -> None:
-        logging.info(f"Reversing notifying {node.id}...")
+        logging.info(f"Reversing notifying {node.ip}...")
         self.successor = node
-        logging.info(f"Node {node.id} reversed notified {self.id}")
+        logging.info(f"Node {node.ip} reversed notified {self.ip}")
 
     def not_alone_notify(self, node: ChordReference) -> None:
-        logging.info(f"Notifying {node.id} that I am not alone...")
+        logging.info(f"Notifying {node.ip} that I am not alone...")
 
         self.successor = node
         self.predecessor = node
@@ -165,7 +167,7 @@ class ChordNode(ChordReference):
         # Update replication with new successor
         # self.update_replication(delegate_data=True, case_2=True)
 
-        logging.info(f"Node {node.id} notified {self.id} that I am not alone")
+        logging.info(f"Node {node.ip} notified {self.ip} that I am not alone")
 
     # endregion
 
@@ -174,11 +176,11 @@ class ChordNode(ChordReference):
         time.sleep(WAIT_CHECK * START_MOD)
 
         while True:
+            logging.info("Checking stability...")
             if self.successor.id == self.id:
                 time.sleep(WAIT_CHECK * STABLE_MOD)
                 continue
 
-            logging.info("Checking stability...")
             if self.successor.is_alive:
                 x = self.successor.predecessor
                 if x and x.id == self.id:
@@ -195,21 +197,22 @@ class ChordNode(ChordReference):
                 # if self.pred and self.pred.check_node():
                 #     self.predpred = self.pred.pred
             else:
-                logging.error("No successor found, waiting for predecesor check...")
+                logging.error("No successor found, waiting for predecessor check...")
+            logging.info("Stability check complete")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def _check_predecessor(self) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
 
         while True:
+            logging.info("Checking predecessor...")
             if self.successor is self:
                 time.sleep(WAIT_CHECK * STABLE_MOD)
                 continue
 
-            logging.info("Checking predecessor...")
             if self.predecessor:
                 if not self.predecessor.is_alive:
-                    logging.warning(f"Predecessor {self.predecessor.id} is dead")
+                    logging.warning(f"Predecessor {self.predecessor.ip} is dead")
                     two_in_a_row = False
                     predpred = self.predecessor.predecessor
                     if predpred.is_alive:
@@ -244,29 +247,36 @@ class ChordNode(ChordReference):
                     # else:
                     #     self.update_replication(False, False, True)
                 else:
-                    logging.info(f"Predecessor {self.predecessor.id} is alive")
+                    logging.info(f"Predecessor {self.predecessor.ip} is alive")
             else:
                 logging.warning("No predecessor found")
+            logging.info("Predecessor check complete")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def _leader_checker(self) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
 
         while True:
+            logging.info("Checking leader status...")
             if self.leader:
                 if not self.leader.is_alive:
                     self.leader = None
                     logging.error("Leader is dead")
-            time.sleep(WAIT_CHECK * ELECTION_MOD)
+                else:
+                    logging.info(f"Leader {self.leader.ip} is alive")
+            logging.info("Leader status check complete")
+            time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def _fix_fingers(self, remain: int = 0) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
 
         while True:
+            logging.info("Fixing fingers...")
             for i in range(remain, remain + BATCH_SIZE):
                 start = (self.id + 2**i) % (2**SHA_1)
                 self.finger_table[i] = self._find_successor(start)
             remain = (remain + BATCH_SIZE) % SHA_1
+            logging.info("Finger fix complete")
             time.sleep(WAIT_CHECK)
 
     # endregion

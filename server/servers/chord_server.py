@@ -51,6 +51,7 @@ class ChordServer(Server, ChordNode):
             sock.connect((node.ip, port))
             sock.sendall(message.encode("utf-8"))
             response = sock.recv(1024)
+        logging.info(f"Sent request to {node.ip}:{port}, received response")
         return response.decode("utf-8")
 
     def _is_node_request(self, addr: Tuple[str, int]) -> bool:
@@ -111,7 +112,7 @@ class ChordServer(Server, ChordNode):
         logging.info(f"Starting the multicast server on {self.ip}...")
 
         while True:
-            time.sleep(WAIT_CHECK * START_MOD * START_MOD)
+            time.sleep(WAIT_CHECK * BROADCAST_MOD)
             if not self.im_the_leader or self.in_election:
                 continue
 
