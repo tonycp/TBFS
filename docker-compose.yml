@@ -21,7 +21,7 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.50
-      PORT: 5555
+      PORT: 10000
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -31,7 +31,7 @@ services:
     depends_on:
       - router
     ports:
-      - "5555:5555"
+      - "5555:10000"
     networks:
       server_network:
         ipv4_address: 10.0.11.50
@@ -45,7 +45,7 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.51
-      PORT: 5555
+      PORT: 10000
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -55,7 +55,7 @@ services:
     depends_on:
       - router
     ports:
-      - "5556:5555"
+      - "5556:10000"
     networks:
       server_network:
         ipv4_address: 10.0.11.51
@@ -69,7 +69,7 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.52
-      PORT: 5555
+      PORT: 10000
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -79,7 +79,7 @@ services:
     depends_on:
       - router
     ports:
-      - "5557:5555"
+      - "5557:10000"
     networks:
       server_network:
         ipv4_address: 10.0.11.52
@@ -93,7 +93,7 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.53
-      PORT: 5555
+      PORT: 10000
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -103,7 +103,7 @@ services:
     depends_on:
       - router
     ports:
-      - "5558:5555"
+      - "5558:10000"
     networks:
       server_network:
         ipv4_address: 10.0.11.53
@@ -111,6 +111,7 @@ services:
   router:
     build:
       context: ./router
+      dockerfile: router.Dockerfile
     cap_add:
       - NET_ADMIN
     networks:
@@ -128,14 +129,14 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.50
-      PORT: 5555
+      PORT: 10000
       ROUTER_IP: 10.0.10.2
     volumes:
       - client_data:/app
     depends_on:
       - router
     ports:
-      - "5560:5555"
+      - "5560:10000"
     networks:
       - client_network
 
@@ -148,14 +149,14 @@ services:
     environment:
       PROTOCOL: tcp
       HOST: 10.0.11.51
-      PORT: 5555
+      PORT: 10000
       ROUTER_IP: 10.0.10.2
     volumes:
       - client_data:/app
     depends_on:
       - router
     ports:
-      - "5561:5556"
+      - "5561:10000"
     networks:
       - client_network
 

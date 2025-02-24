@@ -1,9 +1,19 @@
-import zmq, json, os, logging
-from typing import Optional
+import zmq, json, os, logging, socket, time
+from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 
 
 __all__ = ["FileClient"]
+
+# Environment variable keys
+HOST_ENV_KEY = "HOST"
+PORT_ENV_KEY = "PORT"
+MCAST_ADDR_ENV_KEY = "MCAST_ADDR"
+DEFAULT_BROADCAST_PORT = 10002
+WAIT_CHECK = 5
+
+# Default values
+PON_CALL = 5
 
 _commands = {
     # Create, Update, Delete, Get, GetAll
@@ -37,16 +47,20 @@ _commands = {
         "function": "get_user_id",
         "dataset": ["user_name"],
     },
+    PON_CALL: {
+        "command_name": "Chord",
+        "function": "pon_call",
+        "dataset": ["message"],
+    },
 }
 
 
 class FileClient:
-    def __init__(self, server_url: str) -> None:
-        self.server_url = server_url
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REQ)
-        self.socket.connect(self.server_url)
+    def __init__(self, port) -> None:
+        """Initialize the FileClient with the server's host and port."""
+        self.port = port
         self.user_id = None
+        self.server_ip = self._get_server_ip()
 
     def get_user_id(self) -> int:
         logging.info("Getting user id...")
@@ -89,26 +103,93 @@ class FileClient:
     def send_message(self, command: str, data: dict[str, Optional[str]]):
         if self.user_id is None:
             self.user_id = self.get_user_id()
-        return self._send_multipart_message(command, data)
-
-    def _send_multipart_message(
-        self, command: str, data: dict[str, Optional[str]]
-    ) -> str:
-        """Send a multipart message to the server."""
-        message = json.dumps(data).encode("utf-8")
-
-        if command not in _commands:
-            raise ValueError(f"Unknown command: {command}")
-
         header = _commands[command]
-        command_message = json.dumps(header).encode("utf-8")
+        return self._socket_call(header, data)
 
-        parts = [command_message, message]
+    def _socket_call(
+        self, server_ip, header: str, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        message = json.dumps({"header": header, "data": data})
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(WAIT_CHECK)
+        port = self.port
 
-        logging.info("Sending message to: %s", self.server_url)
-        self.socket.send_multipart(parts)
+        logging.info(f"Sending message to {server_ip}:{port} from chord reference")
+        try:
+            sock.connect((server_ip, port))
+            sock.sendall(message.encode("utf-8"))
+            response = sock.recv(1024)
+            logging.info(f"Received response from {server_ip}:{port}: {response}")
+            return json.loads(response.decode("utf-8"))
+        except ConnectionRefusedError:
+            logging.error(f"Connection refused by {server_ip}:{port}")
+            return {"error": "Connection refused"}
+        except socket.timeout:
+            logging.error(
+                f"Timeout occurred while communicating with {server_ip}:{port}"
+            )
+            return {"error": "Timeout"}
+        except Exception as e:
+            logging.error(
+                f"An error occurred while communicating with {server_ip}:{port}: {e}"
+            )
+            return {"error": str(e)}
+        finally:
+            sock.close()
 
-        response = self.socket.recv_multipart()
-        last_endpoint = self.socket.getsockopt_string(zmq.LAST_ENDPOINT)
-        logging.info("Received response from: %s", last_endpoint)
-        return response[0].decode("utf-8")
+    def _get_server_ip(self) -> str:
+        """Get the server IP either from the environment or via multicast."""
+        server_ip = os.getenv(HOST_ENV_KEY, None)
+        if not server_ip or not self._is_server_alive(server_ip):
+            server_ip = self._send_multicast_request()
+            os.environ[HOST_ENV_KEY] = server_ip
+        return server_ip
+
+    def _is_server_alive(self, server_ip: str) -> bool:
+        """Check if the server is alive by sending a request to the ChordReference."""
+        return self._ping_pong(server_ip)
+
+    def _send_multicast_request(self) -> str:
+        """Send a multicast request to discover the server IP."""
+        multicast_ip = os.getenv(MCAST_ADDR_ENV_KEY, "224.0.0.1")
+        port = DEFAULT_BROADCAST_PORT
+        message = json.dumps({"request": "server_ip"}).encode("utf-8")
+
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+            sock.sendto(message, (multicast_ip, port))
+            sock.settimeout(WAIT_CHECK)
+
+            try:
+                response, addr = sock.recvfrom(1024)
+                logging.info(f"Received multicast response from {addr}: {response}")
+                server_ip = json.loads(response.decode("utf-8")).get("server_ip")
+                logging.info(f"Discovered server IP: {server_ip}")
+                return server_ip
+            except socket.timeout:
+                raise RuntimeError("Failed to discover server IP via multicast")
+
+    def _send_chord_message(
+        self, server_ip, chord_data: int, data: str
+    ) -> Dict[str, Any]:
+        logging.info(f"Sending chord message with data: {data}")
+        header = header_data(**_commands[chord_data])
+        response = self._socket_call(server_ip, header, data)
+        logging.info(f"Chord message sent with response: {response}")
+        return response
+
+    def _ping_pong(self, server_ip) -> bool:
+        logging.info("Sending ping message")
+        data = {"message": "Ping"}
+        response = self._send_chord_message(server_ip, PON_CALL, data)
+        logging.info("Ping message sent with response: Pong")
+        return response.get("message") == "Pong"
+
+
+def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> str:
+    """Create a header string from the command name, function name, and dataset."""
+    return {
+        "command_name": command_name,
+        "function": function,
+        "dataset": dataset,
+    }

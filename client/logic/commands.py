@@ -45,9 +45,7 @@ def check_client() -> None:
     global _client
     if _client is not None:
         return
-    _client = FileClient(
-        f"{_socket_config['protocol']}://{_socket_config['host']}:{_socket_config['port']}"
-    )
+    _client = FileClient(_socket_config["port"])
 
 
 def _send_data(command: str, **kwargs) -> None:

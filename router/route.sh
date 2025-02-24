@@ -1,4 +1,7 @@
 #!/bin/sh
-iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT
-iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
-while true; do sleep 1; done
+iptables -t nat -A POSTROUTING -s 10.0.10.0/24 -o eth0 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 10.0.11.0/24 -o eth0 -j MASQUERADE
+
+sleep 5
+ip route add 224.0.0.0/4 dev eth2
+python /root/multicast_proxy.py
