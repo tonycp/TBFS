@@ -68,15 +68,15 @@ class ChordReference:
 
     @successor.setter
     def successor(self, node: ChordReference):
-        self._set_property("successor", node.id)
+        self._set_chord_reference("successor", node.id)
 
     @predecessor.setter
     def predecessor(self, node: ChordReference):
-        self._set_property("predecessor", node.id)
+        self._set_chord_reference("predecessor", node.id)
 
     @leader.setter
     def leader(self, node: ChordReference):
-        self._set_property("leader", node.id)
+        self._set_chord_reference("leader", node.id)
 
     @im_the_leader.setter
     def im_the_leader(self, value: bool):
@@ -138,6 +138,7 @@ class ChordReference:
         self._send_chord_message(CHORD_DATA.NOTIFY_CALL, data)
         logging.info(f"{function_name} call complete")
 
+
     def _get_property(self, property: str) -> Any:
         logging.info(f"Getting property: {property}")
         data = {"property": property}
@@ -153,10 +154,18 @@ class ChordReference:
 
     def _get_chord_reference(self, property: str) -> ChordReference:
         logging.info(f"Getting chord reference for property: {property}")
-        response = self._get_property(property)
-        updated_config = self._config.copy_with_updates({HOST_KEY: response})
-        logging.info(f"Chord reference for {property} retrieved: {response}")
+        data = {"property": property}
+        response = self._send_chord_message(CHORD_DATA.GET_CHORD_REFERENCE, data)
+        ip = response['ip']
+        logging.info(f"Chord reference for {property} retrieved: {ip}")
+        updated_config = self._config.copy_with_updates({HOST_KEY: ip})
         return ChordReference(updated_config)
+    
+    def _set_chord_reference(self, property: str, ip: int):
+        logging.info(f"Setting chord reference for property: {property} to value: {ip}")
+        data = {"property": property, "ip": ip}
+        self._send_chord_message(CHORD_DATA.SET_CHORD_REFERENCE, data)
+        logging.info(f"Chord reference for {property} set to ip: {ip}")
 
     def _send_chord_message(self, chord_data: CHORD_DATA, data: str) -> Dict[str, Any]:
         logging.info(f"Sending chord message with data: {data}")

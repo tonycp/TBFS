@@ -66,6 +66,8 @@ ELECTION_COMMANDS = {
 class CHORD_DATA(Enum):
     GET_PROPERTY = 1
     SET_PROPERTY = 2
+    GET_CHORD_REFERENCE = 1
+    SET_CHORD_REFERENCE = 2
     FIND_CALL = 3
     NOTIFY_CALL = 4
     PON_CALL = 5
@@ -78,10 +80,20 @@ CHORD_DATA_COMMANDS = {
         "function": "get_property_call",
         "dataset": ["property"],
     },
+    CHORD_DATA.GET_CHORD_REFERENCE: {
+        "command_name": "Chord",
+        "function": "get_chord_reference_call",
+        "dataset": ["property"],
+    },
     CHORD_DATA.SET_PROPERTY: {
         "command_name": "Chord",
         "function": "set_property_call",
         "dataset": ["property", "value"],
+    },
+    CHORD_DATA.SET_CHORD_REFERENCE: {
+        "command_name": "Chord",
+        "function": "set_chord_reference_call",
+        "dataset": ["property", "ip"],
     },
     CHORD_DATA.FIND_CALL: {
         "command_name": "Chord",

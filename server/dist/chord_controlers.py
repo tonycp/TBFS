@@ -12,10 +12,25 @@ _chord_server: Optional[ChordNode] = None
 
 
 @Chord({"property": str})
+def get_chord_reference_call(property: str) -> Dict[str, Any]:
+    logging.info(f"Getting chord reference {property}")
+
+    value = getattr(_chord_server, property)
+
+    if isinstance(value, ChordReference):
+        value = value.ip
+
+    return {
+        "message": "Chord reference retrieved",
+        "ip": value,
+    }
+
+
+@Chord({"property": str})
 def get_property_call(property: str) -> Dict[str, Any]:
     logging.info(f"Getting property {property}")
 
-    value = _chord_server.__dict__.get(property)
+    value = getattr(_chord_server, property)
 
     return {
         "message": "Property retrieved",
@@ -23,12 +38,25 @@ def get_property_call(property: str) -> Dict[str, Any]:
     }
 
 
+@Chord({"property": str, "ip": Any})
+def set_chord_reference_call(property: str, ip: int) -> Dict[str, Any]:
+    logging.info(f"Setting chord reference {property} to {ip}")
+
+    updated_config = _chord_server._config.copy_with_updates({HOST_KEY: ip})
+    ref = ChordReference(updated_config)
+
+    if hasattr(_chord_server, property):
+        setattr(_chord_server, property, ref)
+
+    return {"message": "Chord reference set"}
+
+
 @Chord({"property": str, "value": Any})
 def set_property_call(property: str, value: Any) -> Dict[str, Any]:
     logging.info(f"Setting property {property} to {value}")
 
     if hasattr(_chord_server, property):
-        _chord_server.__dict__[property] = value
+        setattr(_chord_server, property, value)
 
     return {"message": "Property set"}
 

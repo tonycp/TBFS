@@ -21,11 +21,12 @@ class ChordServer(Server, ChordNode):
         ChordNode.__init__(self, config)
         Server.__init__(self, config)
         self._subscribe_read_port(self._config[NODE_PORT_KEY])
+        self._subscribe_read_port(DEFAULT_ELECTION_PORT)
 
         self.is_leader_req = False
         self.is_node_req = False
 
-    def send_multicast_notification(self) -> None:
+    def send_multicast_notification(self, port, data) -> None:
         """Multicast the leader information to all nodes."""
         data = json.dumps({"ip": self.ip})
         port = DEFAULT_BROADCAST_PORT
@@ -53,6 +54,10 @@ class ChordServer(Server, ChordNode):
             response = sock.recv(1024)
         logging.info(f"Sent request to {node.ip}:{port}, received response")
         return response.decode("utf-8")
+
+    def send_election_message(self, elect: ELECTION, data: str):
+        header = header_data(**ELECTION_COMMANDS[elect])
+        self.send_multicast_notification()
 
     def _is_node_request(self, addr: Tuple[str, int]) -> bool:
         node_port = self._config[NODE_PORT_KEY]
@@ -100,13 +105,16 @@ class ChordServer(Server, ChordNode):
         return Server._solver_request(self, header, data, addr)
 
     def _multicast_server(self) -> None:
-        multicast_ip = self._config[MCAST_ADDR_KEY]
+        multicast_ip, port = self._config[MCAST_ADDR_KEY], DEFAULT_BROADCAST_PORT
         membership = socket.inet_aton(multicast_ip) + socket.inet_aton("0.0.0.0")
+        data = json.dumps({"ip": self.ip})
+        port = DEFAULT_BROADCAST_PORT
+        params = (port, data)
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, membership)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("", DEFAULT_BROADCAST_PORT))
+        sock.bind(("", port))
 
         sock.settimeout(WAIT_CHECK)
         logging.info(f"Starting the multicast server on {self.ip}...")
@@ -116,7 +124,7 @@ class ChordServer(Server, ChordNode):
             if not self.im_the_leader or self.in_election:
                 continue
 
-            threading.Thread(target=self.send_multicast_notification).start()
+            threading.Thread(target=self.send_multicast_notification, args=params).start()
             conn, addr = sock.recvfrom(1024)
 
             if self.ip == addr[0] or self.ip == "127.0.0.1":
@@ -132,7 +140,7 @@ class ChordServer(Server, ChordNode):
     def _election_loop(self) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
 
-        url = (self._config[HOST_KEY], int(self._config[NODE_PORT_KEY]))
+        url = (self._config[HOST_KEY], int(self._config[DEFAULT_ELECTION_PORT]))
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(url)
         sock.listen(5)
