@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any, Tuple
 
-import time, zmq, json, logging, threading, socket, selectors
+import time, json, logging, socket, selectors
 
 from data.const import *
 from logic.handlers import *
@@ -56,7 +56,7 @@ class Server:
 
                 conn.sendall(result.encode("utf-8"))
                 logging.info(f"Response sent to {addr}")
-                
+
                 self.selector.unregister(conn)
                 conn.close()
                 logging.info(f"Connection closed with {addr}")
@@ -82,7 +82,7 @@ class Server:
         time.sleep(START_MOD)
         self._process_request(conn, mask, ori_port)
 
-    def _subscribe_read_port(self, port: int, listen: int = 10) -> None:
+    def _subscribe_read_port(self, port: int, listen: int = 10) -> socket.socket:
         """Subscribe to a specific port for incoming requests."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -91,6 +91,7 @@ class Server:
         sock.setblocking(False)
         self.selector.register(sock, selectors.EVENT_READ, (self._accept, port))
         logging.info(f"Subscribed to port {port}")
+        return sock
 
     def _start_listening(self, timeout=None) -> None:
         """Start listening for incoming requests and process them."""

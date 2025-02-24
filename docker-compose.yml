@@ -55,34 +55,58 @@ services:
     depends_on:
       - router
     ports:
-      - "5556:5556"
+      - "5556:5555"
     networks:
       server_network:
         ipv4_address: 10.0.11.51
 
-  # server3:
-  #   working_dir: /app
-  #   build:
-  #     context: ./server
-  #   cap_add:
-  #     - NET_ADMIN
-  #   environment:
-  #     PROTOCOL: tcp
-  #     HOST: 10.0.11.52
-  #     PORT: 5555
-  #     POSTGRES_USER: ${POSTGRES_USER}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${POSTGRES_DB}
-  #     ROUTER_IP: 10.0.11.2
-  #   volumes:
-  #     - server_data:/app
-  #   depends_on:
-  #     - router
-  #   ports:
-  #     - "5557:5557"
-  #   networks:
-  #     server_network:
-  #       ipv4_address: 10.0.11.52
+  server3:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PROTOCOL: tcp
+      HOST: 10.0.11.52
+      PORT: 5555
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      ROUTER_IP: 10.0.11.2
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "5557:5555"
+    networks:
+      server_network:
+        ipv4_address: 10.0.11.52
+
+  server4:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PROTOCOL: tcp
+      HOST: 10.0.11.53
+      PORT: 5555
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      ROUTER_IP: 10.0.11.2
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "5558:5555"
+    networks:
+      server_network:
+        ipv4_address: 10.0.11.53
 
   router:
     build:
@@ -111,7 +135,7 @@ services:
     depends_on:
       - router
     ports:
-      - "5558:5555"
+      - "5560:5555"
     networks:
       - client_network
 
@@ -131,7 +155,7 @@ services:
     depends_on:
       - router
     ports:
-      - "5559:5556"
+      - "5561:5556"
     networks:
       - client_network
 

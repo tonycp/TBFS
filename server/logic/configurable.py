@@ -41,10 +41,14 @@ class Configurable:
         return Configurable(new_config)
 
     def __getitem__(self, name):
-        try:
-            return super().__getitem__(name)
-        except Exception as e:
-            att = self._config.get(name)
-            if att:
-                return att
-            raise e
+        """Get a value from the configuration."""
+        att = self._config.get(name)
+        if att:
+            return att
+        raise KeyError(f"Key {name} not found in configuration")
+
+    def __setitem__(self, name, value):
+        """Set a value in the configuration."""
+        if name not in self._config:
+            raise KeyError(f"Key {name} not found in configuration")
+        self._config[name] = value

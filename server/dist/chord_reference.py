@@ -36,7 +36,7 @@ class ChordReference:
         self.data_port = config[PORT_KEY]
         self.id = ChordReference._hash_key(f"{self.ip}:{self.chord_port}")
         self._config = config
-        
+
     @staticmethod
     def _hash_key(key: str) -> int:
         return int(hashlib.sha1(key.encode("utf-8")).hexdigest(), 16)
@@ -133,11 +133,12 @@ class ChordReference:
     def _call_notify_methods(
         self, function_name: str, node: Optional[ChordReference]
     ) -> None:
-        logging.info(f"Calling {function_name} with node: {node.ip if node else 'None'}")
+        logging.info(
+            f"Calling {function_name} with node: {node.ip if node else 'None'}"
+        )
         data = {"function_name": function_name, "node": node.ip if node else None}
         self._send_chord_message(CHORD_DATA.NOTIFY_CALL, data)
         logging.info(f"{function_name} call complete")
-
 
     def _get_property(self, property: str) -> Any:
         logging.info(f"Getting property: {property}")
@@ -156,11 +157,14 @@ class ChordReference:
         logging.info(f"Getting chord reference for property: {property}")
         data = {"property": property}
         response = self._send_chord_message(CHORD_DATA.GET_CHORD_REFERENCE, data)
-        ip = response['ip']
+        ip = response["ip"]
         logging.info(f"Chord reference for {property} retrieved: {ip}")
-        updated_config = self._config.copy_with_updates({HOST_KEY: ip})
-        return ChordReference(updated_config)
-    
+        ref = None
+        if ip:
+            updated_config = self._config.copy_with_updates({HOST_KEY: ip})
+            ref = ChordReference(updated_config)
+        return ref
+
     def _set_chord_reference(self, property: str, ip: int):
         logging.info(f"Setting chord reference for property: {property} to value: {ip}")
         data = {"property": property, "ip": ip}

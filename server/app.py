@@ -5,6 +5,7 @@ from data.const import HOST_KEY
 from logic.configurable import Configurable
 from servers import ChordServer
 from dist.chord_controlers import set_chord_node
+from servers.server_controler import set_chord_server
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +24,7 @@ if __name__ == "__main__":
     config = Configurable({HOST_KEY: ip})
     server = ChordServer(config)
     set_chord_node(server)
+    set_chord_server(server)
     try:
         logging.info(f"Starting the server in {ip}...")
         server.run()

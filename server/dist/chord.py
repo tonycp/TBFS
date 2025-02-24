@@ -31,7 +31,8 @@ class ChordNode(ChordReference):
         self.im_the_leader: bool = True
         self.in_election: bool = False
 
-            # region Properties Methods
+        # region Properties Methods
+
     @property
     def successor(self) -> ChordReference:
         return self._successor
@@ -110,7 +111,9 @@ class ChordNode(ChordReference):
         logging.info(f"Adopting leader: {node.ip if node else 'self'}")
         self.leader = node or self
         self.im_the_leader = node is self
-        logging.info(f"Leader adopted: {self.leader.ip}, I am the leader: {self.im_the_leader}")
+        logging.info(
+            f"Leader adopted: {self.leader.ip}, I am the leader: {self.im_the_leader}"
+        )
 
     def join(self, node: Optional[ChordReference] = None) -> None:
         if node:
@@ -263,7 +266,12 @@ class ChordNode(ChordReference):
                     self.leader = None
                     logging.error("Leader is dead")
                 else:
-                    logging.info(f"Leader {self.leader.ip} is alive")
+                    other = self.leader.leader
+                    if not other or other.id != self.leader.id:
+                        logging.warning("Leader is not the same as the node")
+                        self.leader = None
+                    else:
+                        logging.info(f"Leader {self.leader.ip} is alive")
             logging.info("Leader status check complete")
             time.sleep(WAIT_CHECK * STABLE_MOD)
 

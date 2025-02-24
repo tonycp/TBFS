@@ -2,20 +2,20 @@ from typing import Optional, Dict, Any
 
 import logging
 
-from data.const import ELECTION, HOST_KEY
-from logic.handlers import Chord, Election
+from data.const import *
+from logic.handlers import Chord
 
 from .chord import ChordNode
-from .chord_reference import ChordReference, bully
+from .chord_reference import ChordReference
 
-_chord_server: Optional[ChordNode] = None
+_chord_node: Optional[ChordNode] = None
 
 
 @Chord({"property": str})
 def get_chord_reference_call(property: str) -> Dict[str, Any]:
     logging.info(f"Getting chord reference {property}")
 
-    value = getattr(_chord_server, property)
+    value = getattr(_chord_node, property)
 
     if isinstance(value, ChordReference):
         value = value.ip
@@ -30,7 +30,7 @@ def get_chord_reference_call(property: str) -> Dict[str, Any]:
 def get_property_call(property: str) -> Dict[str, Any]:
     logging.info(f"Getting property {property}")
 
-    value = getattr(_chord_server, property)
+    value = getattr(_chord_node, property)
 
     return {
         "message": "Property retrieved",
@@ -42,11 +42,11 @@ def get_property_call(property: str) -> Dict[str, Any]:
 def set_chord_reference_call(property: str, ip: int) -> Dict[str, Any]:
     logging.info(f"Setting chord reference {property} to {ip}")
 
-    updated_config = _chord_server._config.copy_with_updates({HOST_KEY: ip})
+    updated_config = _chord_node._config.copy_with_updates({HOST_KEY: ip})
     ref = ChordReference(updated_config)
 
-    if hasattr(_chord_server, property):
-        setattr(_chord_server, property, ref)
+    if hasattr(_chord_node, property):
+        setattr(_chord_node, property, ref)
 
     return {"message": "Chord reference set"}
 
@@ -55,8 +55,8 @@ def set_chord_reference_call(property: str, ip: int) -> Dict[str, Any]:
 def set_property_call(property: str, value: Any) -> Dict[str, Any]:
     logging.info(f"Setting property {property} to {value}")
 
-    if hasattr(_chord_server, property):
-        setattr(_chord_server, property, value)
+    if hasattr(_chord_node, property):
+        setattr(_chord_node, property, value)
 
     return {"message": "Property set"}
 
@@ -66,8 +66,8 @@ def finding_call(function_name: str, key: int) -> Dict[str, Any]:
     logging.info(f"Finding message received for {function_name}, by id: {key}")
 
     result = None
-    if hasattr(_chord_server, function_name):
-        func = getattr(_chord_server, function_name)
+    if hasattr(_chord_node, function_name):
+        func = getattr(_chord_node, function_name)
         if callable(func):
             result: ChordNode = func(key)
             ip = result.ip if result else None
@@ -81,12 +81,12 @@ def finding_call(function_name: str, key: int) -> Dict[str, Any]:
 @Chord({"function_name": str, "node": str})
 def notify_call(function_name: str, node: str) -> Dict[str, Any]:
     logging.info(f"Notify message received for {function_name}, by ip: {node}")
-    updated_config = _chord_server._config.copy_with_updates({HOST_KEY: node})
+    updated_config = _chord_node._config.copy_with_updates({HOST_KEY: node})
     ref = ChordReference(updated_config)
 
     result = None
-    if hasattr(_chord_server, function_name):
-        func = getattr(_chord_server, function_name)
+    if hasattr(_chord_node, function_name):
+        func = getattr(_chord_node, function_name)
         if callable(func):
             result = func(ref)
 
@@ -103,49 +103,7 @@ def pon_call(message: str) -> Dict[str, Any]:
     return {"message": "Pong"}
 
 
-@Election({"id": int})
-def election_call(id: int, ip: str) -> Dict[str, Any]:
-    logging.warning(f"Election message received form: {ip}")
-
-    if not _chord_server.in_election:
-        _chord_server.in_election = True
-        _chord_server.leader = None
-        _chord_server.send_election_message(ELECTION.START)
-        return {"message": "Broadcast"}
-
-    if bully(_chord_server.id, id):
-        return {"message": "Work Done"}
-
-    return {"message": "Ok"}
-
-
-@Election({"id": int, "ip": str})
-def winner_call(id: int, ip: str) -> None:
-    logging.info(f"Winner message received form: {ip}")
-
-    is_bully = bully(_chord_server.id, id)
-    have_leader = _chord_server.leader and not bully(id, _chord_server.leader.id)
-    if not is_bully and not have_leader:
-        updated_config = _chord_server._config.copy_with_updates({HOST_KEY: ip})
-        _chord_server.leader = ChordReference(updated_config)
-        _chord_server.im_the_leader = _chord_server.id == id
-        _chord_server.in_election = False
-
-    return {"message": "Ok"}
-
-
-@Election({"id": int})
-def ok_call(id: int, ip: str) -> None:
-    logging.info(f"OK message received form: {ip}")
-
-    if _chord_server.leader and bully(id, _chord_server.leader.id):
-        _chord_server.leader = id
-    _chord_server.im_the_leader = False
-
-    return {"message": "Ok"}
-
-
 def set_chord_node(chord_node: ChordNode) -> None:
     """Set the configuration for the server."""
-    global _chord_server
-    _chord_server = chord_node
+    global _chord_node
+    _chord_node = chord_node
