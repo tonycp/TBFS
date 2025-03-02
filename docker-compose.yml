@@ -3,13 +3,13 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.0.10.0/24
+        - subnet: ${CLIENT_NETWORK}
 
   server_network:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.0.11.0/24
+        - subnet: ${SERVER_NETWORK}
 
 services:
   server1:
@@ -19,13 +19,7 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      PROTOCOL: tcp
-      HOST: 10.0.11.50
-      PORT: 10000
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      ROUTER_IP: 10.0.11.2
+      ROUTER_IP: ${ROUTER_SERVER_IP}
     volumes:
       - server_data:/app
     depends_on:
@@ -33,8 +27,7 @@ services:
     ports:
       - "5555:10000"
     networks:
-      server_network:
-        ipv4_address: 10.0.11.50
+      - server_network
 
   server2:
     working_dir: /app
@@ -43,13 +36,7 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      PROTOCOL: tcp
-      HOST: 10.0.11.51
-      PORT: 10000
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      ROUTER_IP: 10.0.11.2
+      ROUTER_IP: ${ROUTER_SERVER_IP}
     volumes:
       - server_data:/app
     depends_on:
@@ -57,68 +44,29 @@ services:
     ports:
       - "5556:10000"
     networks:
-      server_network:
-        ipv4_address: 10.0.11.51
-
-  server3:
-    working_dir: /app
-    build:
-      context: ./server
-    cap_add:
-      - NET_ADMIN
-    environment:
-      PROTOCOL: tcp
-      HOST: 10.0.11.52
-      PORT: 10000
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      ROUTER_IP: 10.0.11.2
-    volumes:
-      - server_data:/app
-    depends_on:
-      - router
-    ports:
-      - "5557:10000"
-    networks:
-      server_network:
-        ipv4_address: 10.0.11.52
-
-  server4:
-    working_dir: /app
-    build:
-      context: ./server
-    cap_add:
-      - NET_ADMIN
-    environment:
-      PROTOCOL: tcp
-      HOST: 10.0.11.53
-      PORT: 10000
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      ROUTER_IP: 10.0.11.2
-    volumes:
-      - server_data:/app
-    depends_on:
-      - router
-    ports:
-      - "5558:10000"
-    networks:
-      server_network:
-        ipv4_address: 10.0.11.53
+      - server_network
 
   router:
     build:
       context: ./router
-      dockerfile: router.Dockerfile
     cap_add:
       - NET_ADMIN
     networks:
       client_network:
-        ipv4_address: 10.0.10.2
+        ipv4_address: ${ROUTER_CLIENT_IP}
       server_network:
-        ipv4_address: 10.0.11.2
+        ipv4_address: ${ROUTER_SERVER_IP}
+
+  mcproxy:
+    build:
+      context: ./router
+    cap_add:
+      - NET_ADMIN
+    networks:
+      client_network:
+        ipv4_address: ${PROXY_CLIENT_IP}
+      server_network:
+        ipv4_address: ${PROXY_SERVER_IP}
 
   client1:
     working_dir: /app
@@ -127,10 +75,7 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      PROTOCOL: tcp
-      HOST: 10.0.11.50
-      PORT: 10000
-      ROUTER_IP: 10.0.10.2
+      ROUTER_IP: ${ROUTER_CLIENT_IP}
     volumes:
       - client_data:/app
     depends_on:
@@ -147,10 +92,7 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      PROTOCOL: tcp
-      HOST: 10.0.11.51
-      PORT: 10000
-      ROUTER_IP: 10.0.10.2
+      ROUTER_IP: ${ROUTER_CLIENT_IP}
     volumes:
       - client_data:/app
     depends_on:

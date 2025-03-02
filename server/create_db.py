@@ -2,10 +2,17 @@
 import os
 from dotenv import load_dotenv
 from data import Base
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "'postgresql://postgres:ranvedi@localhost/SDDB'")
+
+# Leer la URL de la base de datos desde el archivo .env
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///mydatabase.db')
+
+# Crear el motor de la base de datos
 engine = create_engine(DATABASE_URL)
-Base.metadata.create_all(engine)
+
+# Crear todas las tablas (asumiendo que ya tienes modelos definidos)
+metadata = MetaData()
+metadata.create_all(engine)
 print("Base de datos y tablas creadas exitosamente.")

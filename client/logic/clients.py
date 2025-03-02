@@ -100,7 +100,7 @@ class FileClient:
         logging.info("File info: %s", json.dumps(file_info))
         return file_info
 
-    def send_message(self, command: str, data: dict[str, Optional[str]]):
+    def send_message(self, command: str, data: Dict[str, Optional[str]]):
         if self.user_id is None:
             self.user_id = self.get_user_id()
         header = _commands[command]

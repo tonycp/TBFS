@@ -56,7 +56,7 @@ class ChordServer(Server, ChordNode):
         self,
         elect: ELECTION,
         port: int,
-        data: dict[str, Any],
+        data: Dict[str, Any],
     ) -> None:
         """Send an election message to the specified port."""
         logging.info(f"Sending election message: {elect.name}")
@@ -68,7 +68,7 @@ class ChordServer(Server, ChordNode):
         self,
         node: ChordReference,
         header: Tuple[str, str, List[str]],
-        data: List[str],
+        data: Dict[str, Any],
         port: int,
     ) -> str:
         """Send a request message to the specified node and return the response."""
@@ -148,6 +148,7 @@ class ChordServer(Server, ChordNode):
         addr: Tuple[str, int],
     ) -> str:
         """Handle the request as the leader and aggregate responses from other nodes."""
+        data["header"] = header
         header[1] = handle_leader_conversion(header[1])
         return Server._solver_request(self, header, data, addr)
 

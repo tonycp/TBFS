@@ -2,10 +2,7 @@
 
 # Generar el archivo .env a partir de docker-compose.yml
 cat <<EOL > .env
-# Variables de entorno para el servidor
-PROTOCOL=${PROTOCOL}
-HOST=${HOST}
-PORT=${PORT}
+# Variables de entorno para el cliente
 EOL
 
 echo ".env file created."

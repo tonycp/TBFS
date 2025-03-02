@@ -17,17 +17,21 @@ class Repository(Generic[ModelType]):
     """Generic repository for performing database operations on models of type ModelType."""
 
     def __init__(self, model: Type[ModelType], db_url: str) -> None:
-        self.model: Type[ModelType] = model
-        self.engine: Engine = create_engine(db_url)
-        self.Session: scoped_session[SessionType] = scoped_session(
-            sessionmaker(bind=self.engine)
-        )
-        Base.metadata.create_all(self.engine, checkfirst=True)
-        logging.info(f"Repository initialized for model: {self.model.__name__}")
+        """Initialize the repository with a model and database URL."""
+        self.model = model
+        self.session = self._create_session_factory(db_url)
+        logging.info(f"Repository initialized for model: {model.__name__}")
+
+    def _create_session_factory(self, db_url: str) -> scoped_session[SessionType]:
+        """Create a session factory for the database engine."""
+        engine: Engine = create_engine(db_url)
+        session_factory: sessionmaker[SessionType] = sessionmaker(bind=engine)
+        session: scoped_session[SessionType] = scoped_session(session_factory)
+        return session
 
     def get_session(self) -> SessionType:
         """Get a new session from the session factory."""
-        return self.Session()
+        return self.session()
 
     def get(self, id: int) -> Optional[ModelType]:
         """Retrieve an object of type ModelType by its ID."""
