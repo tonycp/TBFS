@@ -12,45 +12,18 @@ networks:
         - subnet: ${SERVER_NETWORK}
 
 services:
-  server1:
-    working_dir: /app
-    build:
-      context: ./server
-    cap_add:
-      - NET_ADMIN
-    environment:
-      ROUTER_IP: ${ROUTER_SERVER_IP}
-    volumes:
-      - server_data:/app
-    depends_on:
-      - router
-    ports:
-      - "5555:10000"
-    networks:
-      - server_network
-
-  server2:
-    working_dir: /app
-    build:
-      context: ./server
-    cap_add:
-      - NET_ADMIN
-    environment:
-      ROUTER_IP: ${ROUTER_SERVER_IP}
-    volumes:
-      - server_data:/app
-    depends_on:
-      - router
-    ports:
-      - "5556:10000"
-    networks:
-      - server_network
-
   router:
     build:
       context: ./router
     cap_add:
       - NET_ADMIN
+    environment:
+      CLIENT_NETWORK: ${CLIENT_NETWORK}
+      SERVER_NETWORK: ${SERVER_NETWORK}
+      ROUTER_CLIENT_IP: ${ROUTER_CLIENT_IP}
+      ROUTER_SERVER_IP: ${ROUTER_SERVER_IP}
+      PROXY_CLIENT_IP: ${PROXY_CLIENT_IP}
+      PROXY_SERVER_IP: ${PROXY_SERVER_IP}
     networks:
       client_network:
         ipv4_address: ${ROUTER_CLIENT_IP}
@@ -62,11 +35,91 @@ services:
       context: ./router
     cap_add:
       - NET_ADMIN
+
+    environment:
+      CLIENT_NETWORK: ${CLIENT_NETWORK}
+      SERVER_NETWORK: ${SERVER_NETWORK}
+      ROUTER_CLIENT_IP: ${ROUTER_CLIENT_IP}
+      ROUTER_SERVER_IP: ${ROUTER_SERVER_IP}
+      PROXY_CLIENT_IP: ${PROXY_CLIENT_IP}
+      PROXY_SERVER_IP: ${PROXY_SERVER_IP}
     networks:
       client_network:
         ipv4_address: ${PROXY_CLIENT_IP}
       server_network:
         ipv4_address: ${PROXY_SERVER_IP}
+
+  server1:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      ROUTER_IP: ${PROXY_SERVER_IP}
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "10500:10000"
+      - "15500:5678"
+    networks:
+      - server_network
+
+  server2:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      ROUTER_IP: ${PROXY_SERVER_IP}
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "10501:10000"
+      - "15501:5678"
+    networks:
+      - server_network
+  
+  server3:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      ROUTER_IP: ${PROXY_SERVER_IP}
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "10502:10000"
+      - "15502:5678"
+    networks:
+      - server_network
+
+  server4:
+    working_dir: /app
+    build:
+      context: ./server
+    cap_add:
+      - NET_ADMIN
+    environment:
+      ROUTER_IP: ${PROXY_SERVER_IP}
+    volumes:
+      - server_data:/app
+    depends_on:
+      - router
+    ports:
+      - "10503:10000"
+      - "15503:5678"
+    networks:
+      - server_network
 
   client1:
     working_dir: /app
@@ -81,7 +134,8 @@ services:
     depends_on:
       - router
     ports:
-      - "5560:10000"
+      - "10600:10000"
+      - "11600:5678"
     networks:
       - client_network
 
@@ -98,7 +152,8 @@ services:
     depends_on:
       - router
     ports:
-      - "5561:10000"
+      - "10601:10000"
+      - "11601:5678"
     networks:
       - client_network
 
