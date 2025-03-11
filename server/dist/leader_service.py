@@ -5,15 +5,16 @@ from typing import Any, List, Dict, Tuple
 
 import logging
 
-from dist.chord_reference import ChordReference
 from data.const import MAX_ITERATIONS
-from .chord_server import ChordServer
+
+from .chord_reference import ChordReference
+from .leader import ChordLeader
 
 __all__ = ["LeaderService"]
 
 
 class LeaderService(ServerService):
-    def __init__(self, chord_server: ChordServer):
+    def __init__(self, chord_server: ChordLeader):
         ServerService.__init__(self)
         self.chord_server = chord_server
 
@@ -29,7 +30,7 @@ class LeaderService(ServerService):
             while len(successors) < num_successors and iterations > 0:
                 if node not in successors:
                     successors.append(node)
-                node = node._find_successor(id)
+                node = node.get_sucs(id)
                 id = node.id
                 iterations -= 1
         except Exception as e:

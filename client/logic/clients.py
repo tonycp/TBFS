@@ -142,7 +142,7 @@ class FileClient:
         server_ip = os.getenv(HOST_ENV_KEY, None)
         if not server_ip or not self._is_server_alive(server_ip):
             server_ip = self._send_multicast_request()
-            os.environ[HOST_ENV_KEY] = server_ip
+            update_env_file(server_ip)
         return server_ip
 
     def _is_server_alive(self, server_ip: str) -> bool:
@@ -184,6 +184,21 @@ class FileClient:
         response = self._send_chord_message(server_ip, PON_CALL, data)
         logging.info("Ping message sent with response: Pong")
         return response.get("message") == "Pong"
+
+
+def update_env_file(server_ip: str) -> None:
+    """Update the .env file with the new server IP."""
+    env_file_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+    with open(env_file_path, "r") as file:
+        lines = file.readlines()
+
+    with open(env_file_path, "w") as file:
+        for line in lines:
+            if line.startswith(f"{HOST_ENV_KEY}="):
+                file.write(f"{HOST_ENV_KEY}={server_ip}\n")
+            else:
+                file.write(line)
+    logging.info(f"Updated .env file with new server IP: {server_ip}")
 
 
 def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> str:

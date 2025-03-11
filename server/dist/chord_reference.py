@@ -43,12 +43,12 @@ class ChordReference:
 
     # region Properties Methods
     @property
-    def successor(self) -> ChordReference:
-        return self._get_chord_reference("successor")
+    def sucs(self) -> ChordReference:
+        return self._get_chord_reference("sucs")
 
     @property
-    def predecessor(self) -> ChordReference:
-        return self._get_chord_reference("predecessor")
+    def pred(self) -> ChordReference:
+        return self._get_chord_reference("pred")
 
     @property
     def leader(self) -> ChordReference:
@@ -66,13 +66,13 @@ class ChordReference:
     def is_alive(self) -> bool:
         return self._ping_pong()
 
-    @successor.setter
-    def successor(self, node: ChordReference):
-        self._set_chord_reference("successor", node.id)
+    @sucs.setter
+    def sucs(self, node: ChordReference):
+        self._set_chord_reference("sucs", node.id)
 
-    @predecessor.setter
-    def predecessor(self, node: ChordReference):
-        self._set_chord_reference("predecessor", node.id)
+    @pred.setter
+    def pred(self, node: ChordReference):
+        self._set_chord_reference("pred", node.id)
 
     @leader.setter
     def leader(self, node: ChordReference):
@@ -89,34 +89,26 @@ class ChordReference:
     # endregion
 
     # region Finding Methods
-    def _closest_preceding_node(self, key: int) -> ChordReference:
-        return self._call_finding_methods("_closest_preceding_node", key)
+    def closest_preceding_node(self, key: int) -> ChordReference:
+        return self._call_finding_methods("closest_preceding_node", key)
 
-    def _find_successor(self, key: int) -> ChordReference:
-        return self._call_finding_methods("_find_successor", key)
+    def get_sucs(self, key: int) -> ChordReference:
+        return self._call_finding_methods("get_sucs", key)
 
-    def _find_predecessor(self, key: int) -> ChordReference:
-        return self._call_finding_methods("_find_predecessor", key)
+    def get_pred(self, key: int) -> ChordReference:
+        return self._call_finding_methods("get_pred", key)
 
     # endregion
 
     # region Notification Methods
     def adopt_leader(self, node: Optional[ChordReference] = None) -> None:
-        logging.info(f"Adopting leader: {node.ip if node else 'self'}")
         self._call_notify_methods("adopt_leader", node)
-        logging.info(f"Leader adopted: {node.ip if node else 'self'}")
+
+    def adopt_network(self, node: ChordReference) -> None:
+        self._call_notify_methods("adopt_network", node)
 
     def join(self, node: Optional[ChordReference] = None) -> None:
         self._call_notify_methods("join", node)
-
-    def notify(self, node: ChordReference) -> None:
-        self._call_notify_methods("notify", node)
-
-    def reverse_notify(self, node: ChordReference) -> None:
-        self._call_notify_methods("reverse_notify", node)
-
-    def not_alone_notify(self, node: ChordReference) -> None:
-        self._call_notify_methods("not_alone_notify", node)
 
     # endregion
 
@@ -127,7 +119,10 @@ class ChordReference:
         data = {"function_name": function_name, "key": key}
         response = self._send_chord_message(CHORD_DATA.FIND_CALL, data)
         logging.info(f"{function_name} call complete with result: {response}")
-        updated_config = self._config.copy_with_updates({HOST_KEY: response["ip"]})
+        ip = response.get("ip")
+        if not ip:
+            return None
+        updated_config = self._config.copy_with_updates({HOST_KEY: ip})
         return ChordReference(updated_config)
 
     def _call_notify_methods(
@@ -144,8 +139,9 @@ class ChordReference:
         logging.info(f"Getting property: {property}")
         data = {"property": property}
         response = self._send_chord_message(CHORD_DATA.GET_PROPERTY, data)
-        logging.info(f"Property {property} retrieved with value: {response['value']}")
-        return response["value"]
+        value = response.get("value")
+        logging.info(f"Property {property} retrieved with value: {value}")
+        return value
 
     def _set_property(self, property: str, value: Any) -> None:
         logging.info(f"Setting property: {property} to value: {value}")
@@ -157,13 +153,12 @@ class ChordReference:
         logging.info(f"Getting chord reference for property: {property}")
         data = {"property": property}
         response = self._send_chord_message(CHORD_DATA.GET_CHORD_REFERENCE, data)
-        ip = response["ip"]
-        logging.info(f"Chord reference for {property} retrieved: {ip}")
-        ref = None
-        if ip:
-            updated_config = self._config.copy_with_updates({HOST_KEY: ip})
-            ref = ChordReference(updated_config)
-        return ref
+        logging.info(f"Chord reference for {property} retrieved: {response}")
+        ip = response.get("ip")
+        if not ip:
+            return None
+        updated_config = self._config.copy_with_updates({HOST_KEY: ip})
+        return ChordReference(updated_config)
 
     def _set_chord_reference(self, property: str, ip: int):
         logging.info(f"Setting chord reference for property: {property} to value: {ip}")
@@ -176,7 +171,7 @@ class ChordReference:
         header = header_data(**CHORD_DATA_COMMANDS[chord_data])
         response = self._socket_call(header, data)
         logging.info(f"Chord message sent with response: {response}")
-        return response
+        return response or {}
 
     def _socket_call(self, header: str, data: Dict[str, Any]) -> Dict[str, Any]:
         message = json.dumps({"header": header, "data": data})

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional, Dict, Union
+from typing import Any, List, Optional, Dict, Tuple, Union
 
 import threading, socket
 import time, logging, json
@@ -7,13 +7,14 @@ import time, logging, json
 from data.const import *
 from logic.handlers import *
 from logic.configurable import Configurable
+from servers.server import Server
 
 from .chord_reference import ChordReference, in_between
 
 __all__ = ["ChordNode"]
 
 
-class ChordNode(ChordReference):
+class ChordNode(Server, ChordReference):
     _successor: ChordReference
     _predecessor: Optional[ChordReference]
     _leader: Optional[ChordReference]
@@ -24,21 +25,23 @@ class ChordNode(ChordReference):
         config = config or Configurable()
         ChordReference.__init__(self, config)
 
-        self.successor: ChordReference = self
-        self.leader: Optional[ChordReference] = self
-        self.predecessor: Optional[ChordReference] = None
         self.finger_table: List[Optional[ChordReference]] = [self] * SHA_1
+        self.leader: Optional[ChordReference] = self
+        self.sucs: Optional[ChordReference] = self
+        self.pred: Optional[ChordReference] = None
         self.im_the_leader: bool = True
-        self.in_election: bool = False
 
-        # region Properties Methods
+        Server.__init__(self, config)
+        self._subscribe_read_port(self._config[NODE_PORT_KEY])
+
+    # region Properties Methods
 
     @property
-    def successor(self) -> ChordReference:
+    def sucs(self) -> ChordReference:
         return self._successor
 
     @property
-    def predecessor(self) -> ChordReference:
+    def pred(self) -> ChordReference:
         return self._predecessor
 
     @property
@@ -57,12 +60,12 @@ class ChordNode(ChordReference):
     def is_alive(self) -> bool:
         return True
 
-    @successor.setter
-    def successor(self, node: ChordReference):
+    @sucs.setter
+    def sucs(self, node: ChordReference):
         self._successor = node
 
-    @predecessor.setter
-    def predecessor(self, node: ChordReference):
+    @pred.setter
+    def pred(self, node: ChordReference):
         self._predecessor = node
 
     @leader.setter
@@ -80,29 +83,37 @@ class ChordNode(ChordReference):
     # endregion
 
     # region Finding Methods
-    def _closest_preceding_node(self, node_id: int) -> ChordReference:
+    def closest_preceding_node(self, node_id: int) -> ChordReference:
         for finger_node in reversed(self.finger_table):
             if finger_node and in_between(finger_node.id, self.id, node_id):
                 return finger_node
         return self
 
-    def _find_successor(self, node_id: int) -> ChordReference:
+    def get_sucs(self, node_id: int) -> ChordReference:
         if self.id == node_id:
             return self
 
-        if in_between(node_id, self.id, self.successor.id):
-            return self.successor
+        if in_between(node_id, self.id, self.sucs.id):
+            return self.sucs
 
-        node = self._closest_preceding_node(node_id)
-        if node != self:
-            return node._find_successor(node_id)
-        return self.successor
-
-    def _find_predecessor(self, node_id: int) -> ChordReference:
         node = self
-        while not in_between(node_id, node.id, node.successor.id):
-            node = node.successor
+        closest = self.closest_preceding_node(node_id)
+        while node != closest:
+            node = closest
+            closest = node.closest_preceding_node(node_id)
+
+        return node.sucs
+
+    def get_pred(self, node_id: int) -> ChordReference:
+        node = self
+        while not in_between(node_id, node.id, node.sucs.id):
+            node = node.sucs
         return node
+
+    def _get_other_sucs(self):
+        for node in self.finger_table:
+            if node and node.id != self.sucs.id and node.is_alive:
+                return node
 
     # endregion
 
@@ -111,9 +122,16 @@ class ChordNode(ChordReference):
         logging.info(f"Adopting leader: {node.ip if node else 'self'}")
         self.leader = node or self
         self.im_the_leader = node is self
-        logging.info(
-            f"Leader adopted: {self.leader.ip}, I am the leader: {self.im_the_leader}"
-        )
+        logging.info(f"Leader adopted: {node or self}, I am the leader: {node is self}")
+
+    def adopt_network(self, node: ChordReference) -> None:
+        logging.info(f"Notifying {node.ip} that I am not alone...")
+
+        self.sucs = node
+        self.pred = node
+        # Update replication with new sucs
+
+        logging.info(f"Node {node.ip} notified {self.ip} that I am not alone")
 
     def join(self, node: Optional[ChordReference] = None) -> None:
         if node:
@@ -121,56 +139,41 @@ class ChordNode(ChordReference):
             if not node.is_alive:
                 raise Exception(f"There is no node using the address {node.ip}")
 
-            self.predecessor = None
+            self.pred = None
             # self.predpred = None
-            self.successor = node._find_successor(self.id)
+            self.sucs = node.get_sucs(self.id)
             self.adopt_leader(node.leader)
 
-            if self.successor.id == self.successor.successor.id:
-                self.predecessor = self.successor
+            if self.sucs.id == self.sucs.sucs.id:
+                self.pred = self.sucs
                 # self.predpred = self
-                self.successor.not_alone_notify(self)
+                self.sucs.adopt_network(self)
         else:
             logging.info("Joining as the first node...")
-            self.successor = self
-            self.predecessor = None
+            self.sucs = self
+            self.pred = None
             # self.predpred = None
             self.adopt_leader()
 
         logging.info(f"Node {self.ip} joined the network")
 
-    def notify(self, node: ChordReference) -> None:
-        if node.id == self.id:
-            return
-        logging.info(f"Notifying {node.ip}...")
-        if self.predecessor is None:
-            self.predecessor = node
-            # self.predpred = node.pred
-            # pull replication to predecessor
-            # self.update_replication(False, True)
-
-        elif node.is_alive and in_between(node.id, self.predecessor.id, self.id):
-            self.predecessor = node
-            # self.predpred = self.pred
-            # push replication delegation to predecessor
-            # self.update_replication(True, False)
-        logging.info(f"Node {node.ip} notified {self.ip}")
-
-    def reverse_notify(self, node: ChordReference) -> None:
-        logging.info(f"Reversing notifying {node.ip}...")
-        self.successor = node
-        logging.info(f"Node {node.ip} reversed notified {self.ip}")
-
-    def not_alone_notify(self, node: ChordReference) -> None:
-        logging.info(f"Notifying {node.ip} that I am not alone...")
-
-        self.successor = node
-        self.predecessor = node
-        # self.predpred = self
-        # Update replication with new successor
-        # self.update_replication(delegate_data=True, case_2=True)
-
-        logging.info(f"Node {node.ip} notified {self.ip} that I am not alone")
+    def send_request_message(
+        self,
+        node: ChordReference,
+        header: Tuple[str, str, List[str]],
+        data: Dict[str, Any],
+        port: int,
+    ) -> str:
+        """Send a request message to the specified node and return the response."""
+        logging.info(f"Sending request message to {node.ip}:{port}")
+        header_str = header_data(*header)
+        message = json.dumps({"header": header_str, "data": data})
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((node.ip, port))
+            sock.sendall(message.encode("utf-8"))
+            response = sock.recv(1024)
+        logging.info(f"Sent request to {node.ip}:{port}, received response")
+        return response.decode("utf-8")
 
     # endregion
 
@@ -179,101 +182,53 @@ class ChordNode(ChordReference):
         time.sleep(WAIT_CHECK * START_MOD)
 
         while True:
-            logging.info("Checking stability...")
-            if self.successor.id == self.id:
-                time.sleep(WAIT_CHECK * STABLE_MOD)
+            time.sleep(WAIT_CHECK * STABLE_MOD)
+            if self.sucs.id == self.id:
                 continue
 
-            if self.successor.is_alive:
-                x = self.successor.predecessor
-                if x and x.id == self.id:
+            logging.info("Checking stability...")
+
+            node = self.sucs.pred if self.sucs.is_alive else self._get_other_sucs()
+
+            if node:
+                if node.id == self.id:
                     logging.info("Already stable")
                 else:
                     logging.warning(f"Stabilizing...")
-                    if x and in_between(x.id, self.id, self.successor.id):
-                        self.successor = x
-                        # update replication with new successor
-                        # self.update_replication(False, True, False, False)
+                    if node and in_between(node.id, self.id, self.sucs.id):
+                        self.sucs = node
+                        # update replication with new sucs
 
-                    self.successor.notify(self)
-
-                # if self.pred and self.pred.check_node():
-                #     self.predpred = self.pred.pred
+                    self.sucs.pred = self
             else:
-                logging.error("No successor found, waiting for predecessor check...")
+                logging.info("I am alone...")
+                self.sucs = self
+                self.pred = None
+                self.adopt_leader()
+
             logging.info("Stability check complete")
-            time.sleep(WAIT_CHECK * STABLE_MOD)
-
-    def _check_predecessor(self) -> None:
-        time.sleep(WAIT_CHECK * START_MOD)
-
-        while True:
-            logging.info("Checking predecessor...")
-            if self.successor is self:
-                time.sleep(WAIT_CHECK * STABLE_MOD)
-                continue
-
-            if self.predecessor:
-                if not self.predecessor.is_alive:
-                    logging.warning(f"Predecessor {self.predecessor.ip} is dead")
-                    two_in_a_row = False
-                    predpred = self.predecessor.predecessor
-                    if predpred.is_alive:
-                        self.predecessor = predpred
-                        # self.predpred = self.predpred.pred
-                    else:
-                        self.predecessor = self._find_predecessor(predpred.id)
-                        # self.predpred = self.predpred.pred
-                        two_in_a_row = True
-
-                    if self.predecessor.id == self.id:
-                        self.successor = self
-                        self.predecessor = None
-                        # self.predpred = None
-                        if two_in_a_row:
-                            pass
-                            # self.update_replication(
-                            #     False, False, True, assume_predpred=self.ip
-                            # )
-                        else:
-                            continue
-                            # self.update_replication(False, False, True)
-
-                    self.predecessor.reverse_notify(self)
-
-                    # # Assume
-                    # if two_in_a_row:
-                    #     # Assume pred pred data
-                    #     self.update_replication(
-                    #         False, False, True, assume_predpred=self.pred.ip
-                    #     )
-                    # else:
-                    #     self.update_replication(False, False, True)
-                else:
-                    logging.info(f"Predecessor {self.predecessor.ip} is alive")
-            else:
-                logging.warning("No predecessor found")
-            logging.info("Predecessor check complete")
-            time.sleep(WAIT_CHECK * STABLE_MOD)
 
     def _leader_checker(self) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
 
         while True:
-            logging.info("Checking leader status...")
-            if self.leader:
-                if not self.leader.is_alive:
-                    self.leader = None
-                    logging.error("Leader is dead")
-                else:
-                    other = self.leader.leader
-                    if not other or other.id != self.leader.id:
-                        logging.warning("Leader is not the same as the node")
-                        self.leader = None
-                    else:
-                        logging.info(f"Leader {self.leader.ip} is alive")
-            logging.info("Leader status check complete")
             time.sleep(WAIT_CHECK * STABLE_MOD)
+            if not self.leader:
+                continue
+
+            logging.info("Checking leader status...")
+            if not self.leader.is_alive:
+                self.leader = None
+                logging.error("Leader is dead")
+                continue
+
+            other = self.leader.leader
+            if not other or other.id != self.leader.id:
+                logging.warning("Leader is not the same as the node")
+                self.leader = None
+                continue
+
+            logging.info(f"Leader {self.leader.ip} is alive")
 
     def _fix_fingers(self, remain: int = 0) -> None:
         time.sleep(WAIT_CHECK * START_MOD)
@@ -282,7 +237,7 @@ class ChordNode(ChordReference):
             logging.info("Fixing fingers...")
             for i in range(remain, remain + BATCH_SIZE):
                 start = (self.id + 2**i) % (2**SHA_1)
-                self.finger_table[i] = self._find_successor(start)
+                self.finger_table[i] = self.get_sucs(start)
             remain = (remain + BATCH_SIZE) % SHA_1
             logging.info("Finger fix complete")
             time.sleep(WAIT_CHECK)
@@ -292,6 +247,6 @@ class ChordNode(ChordReference):
     def run(self) -> None:
         # Start threads
         threading.Thread(target=self._stabilize, daemon=True).start()
-        threading.Thread(target=self._check_predecessor, daemon=True).start()
         threading.Thread(target=self._leader_checker, daemon=True).start()
         threading.Thread(target=self._fix_fingers, daemon=True).start()
+        self._start_listening()

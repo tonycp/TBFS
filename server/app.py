@@ -1,11 +1,8 @@
-import logging, logging.handlers as handlers
-import socket
+import debugpy, socket, logging, logging.handlers as handlers
 
 from data.const import HOST_KEY
 from logic.configurable import Configurable
-from servers import ChordServer
-from dist.chord_controlers import set_chord_node
-from servers.server_controler import set_chord_server
+from dist import ChordLeader, set_chord_server
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,10 +17,12 @@ logging.basicConfig(
 
 
 if __name__ == "__main__":
+    debugpy.listen(("0.0.0.0", 5678))
+    logging.info("listening for debugger in port: 5678...")        
+
     ip = str(socket.gethostbyname(socket.gethostname()))
     config = Configurable({HOST_KEY: ip})
-    server = ChordServer(config)
-    set_chord_node(server)
+    server = ChordLeader(config)
     set_chord_server(server)
     try:
         logging.info(f"Starting the server in {ip}...")

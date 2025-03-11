@@ -6,11 +6,12 @@ from data.const import *
 from logic.handlers import *
 from logic.dtos.FileDto import *
 
-from .chord_server import ChordServer
-from dist.chord_reference import ChordReference, bully
+from .leader import ChordLeader
+from .chord_reference import ChordReference, bully
+from .chord_controlers import set_chord_node
 from .leader_service import LeaderService
 
-_chord_server: Optional[ChordServer] = None
+_chord_server: Optional[ChordLeader] = None
 _leader_service: LeaderService = None
 
 
@@ -144,8 +145,9 @@ def lider_get_user_id(
         return str(e)
 
 
-def set_chord_server(chord_server: ChordServer) -> None:
+def set_chord_server(chord_server: ChordLeader) -> None:
     """Set the configuration for the server."""
     global _chord_server, _leader_service
     _chord_server = chord_server
     _leader_service = LeaderService(chord_server)
+    set_chord_node(_chord_server)

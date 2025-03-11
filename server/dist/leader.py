@@ -4,27 +4,26 @@ from typing import Any, List, Optional, Dict, Tuple
 import threading, json, logging, time
 import selectors
 
-from dist.chord import ChordNode
 from logic.configurable import Configurable
+from servers.server import Server
 from logic.handlers import *
 from data.const import *
-from dist.chord_reference import ChordReference
 
-from .server import Server
+from .chord import ChordNode
+from .chord_reference import ChordReference
 
-__all__ = ["ChordServer"]
+__all__ = ["ChordLeader"]
 
 
-class ChordServer(Server, ChordNode):
+class ChordLeader(ChordNode, Server):
     def __init__(self, config: Optional[Configurable] = None):
         config = config or Configurable()
         ChordNode.__init__(self, config)
-        Server.__init__(self, config)
-        self._subscribe_read_port(self._config[NODE_PORT_KEY])
         self._subscribe_read_upd_port(DEFAULT_ELECTION_PORT)
 
-        self.is_leader_req = False
-        self.is_node_req = False
+        self.in_election: bool = False
+        self.is_leader_req: bool = False
+        self.is_node_req: bool = False
 
     def _subscribe_read_upd_port(self, port: int) -> socket.socket:
         """Subscribe to a specific port for incoming requests."""
@@ -63,24 +62,6 @@ class ChordServer(Server, ChordNode):
         header = header_data(**ELECTION_COMMANDS[elect])
         message = json.dumps({"header": header, "data": data})
         self.send_multicast_notification(port, message)
-
-    def send_request_message(
-        self,
-        node: ChordReference,
-        header: Tuple[str, str, List[str]],
-        data: Dict[str, Any],
-        port: int,
-    ) -> str:
-        """Send a request message to the specified node and return the response."""
-        logging.info(f"Sending request message to {node.ip}:{port}")
-        header_str = header_data(*header)
-        message = json.dumps({"header": header_str, "data": data})
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.connect((node.ip, port))
-            sock.sendall(message.encode("utf-8"))
-            response = sock.recv(1024)
-        logging.info(f"Sent request to {node.ip}:{port}, received response")
-        return response.decode("utf-8")
 
     def _is_node_request(self, addr: Tuple[str, int]) -> bool:
         """Check if the request is from a node based on the port."""
@@ -173,13 +154,12 @@ class ChordServer(Server, ChordNode):
 
             threading.Thread(target=send_func, args=params).start()
             conn, addr = sock.recvfrom(1024)
+            data = json.loads(conn.decode("utf-8"))
 
-            if self.ip == addr[0] or self.ip == "127.0.0.1":
+            if self.ip == addr[0] or self.ip == data["ip"] or self.ip == "127.0.0.1":
                 continue
 
             logging.info(f"Received a multicast message: {conn} from {addr}")
-
-            data = json.loads(conn.decode("utf-8"))
 
             ref_config = self._config.copy_with_updates({HOST_KEY: data["ip"]})
             ChordReference(ref_config).join(self)
@@ -212,7 +192,6 @@ class ChordServer(Server, ChordNode):
 
     def run(self) -> None:
         # Start threads
-        ChordNode.run(self)
         threading.Thread(target=self._multicast_server, daemon=True).start()
         threading.Thread(target=self._election_loop, daemon=True).start()
-        self._start_listening()
+        ChordNode.run(self)

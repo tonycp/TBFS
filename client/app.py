@@ -1,4 +1,4 @@
-import logging, logging.handlers as handlers
+import debugpy, logging, logging.handlers as handlers
 from logic.commands import check_client, cli, check_default, set_config
 
 logging.basicConfig(
@@ -12,8 +12,10 @@ logging.basicConfig(
     ],
 )
 
-
 if __name__ == "__main__":
+    debugpy.listen(("0.0.0.0", 5678))
+    logging.info("listening for debugger in port: 5678...")    
+
     config = check_default()
     set_config(config)
     check_client()
