@@ -3,7 +3,8 @@
 # Generar el archivo .env a partir de docker-compose.yml
 cat <<EOL > .env
 # Variables de entorno para el servidor
-DB_URL='sqlite:///original.db'
+DB_BASE_URL='sqlite:///'
+DB_NAME='original.db'
 EOL
 
 echo ".env file created."

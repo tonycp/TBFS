@@ -57,8 +57,6 @@ services:
       - NET_ADMIN
     environment:
       ROUTER_IP: ${PROXY_SERVER_IP}
-    volumes:
-      - server_data:/app
     depends_on:
       - router
     ports:
@@ -75,8 +73,6 @@ services:
       - NET_ADMIN
     environment:
       ROUTER_IP: ${PROXY_SERVER_IP}
-    volumes:
-      - server_data:/app
     depends_on:
       - router
     ports:
@@ -84,7 +80,7 @@ services:
       - "15501:5678"
     networks:
       - server_network
-  
+
   server3:
     working_dir: /app
     build:
@@ -93,8 +89,6 @@ services:
       - NET_ADMIN
     environment:
       ROUTER_IP: ${PROXY_SERVER_IP}
-    volumes:
-      - server_data:/app
     depends_on:
       - router
     ports:
@@ -111,8 +105,6 @@ services:
       - NET_ADMIN
     environment:
       ROUTER_IP: ${PROXY_SERVER_IP}
-    volumes:
-      - server_data:/app
     depends_on:
       - router
     ports:
@@ -129,8 +121,6 @@ services:
       - NET_ADMIN
     environment:
       ROUTER_IP: ${ROUTER_CLIENT_IP}
-    volumes:
-      - client_data:/app
     depends_on:
       - router
     ports:
@@ -147,8 +137,6 @@ services:
       - NET_ADMIN
     environment:
       ROUTER_IP: ${ROUTER_CLIENT_IP}
-    volumes:
-      - client_data:/app
     depends_on:
       - router
     ports:
@@ -156,8 +144,3 @@ services:
       - "11601:5678"
     networks:
       - client_network
-
-volumes:
-  server_data:
-  router_data:
-  client_data:

@@ -15,9 +15,7 @@ from .utils import in_between
 __all__ = ["ChordNode"]
 
 
-class ChordNode(
-    ChordReference,
-):
+class ChordNode(ChordReference, Server):
     _successor: ChordReference
     _predecessor: Optional[ChordReference]
 
@@ -53,7 +51,7 @@ class ChordNode(
     @pred.setter
     def pred(self, node: ChordReference):
         self._predecessor = node
-        self.replication(node, "pred")
+        self.replication(node, "pred.db")
 
     # endregion
 
@@ -136,7 +134,7 @@ class ChordNode(
             if node:
                 logging.info(f"Changing successor to {node.ip}")
                 self.sucs = node
-                self.replication(node, "sucs")
+                self.replication(node, "sucs.db")
                 node.pred = self
             else:
                 logging.info("I am alone...")

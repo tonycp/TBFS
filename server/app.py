@@ -18,7 +18,7 @@ logging.basicConfig(
 
 if __name__ == "__main__":
     debugpy.listen(("0.0.0.0", 5678))
-    logging.info("listening for debugger in port: 5678...")        
+    logging.info("listening for debugger in port: 5678...")
 
     ip = str(socket.gethostbyname(socket.gethostname()))
     config = Configurable({HOST_KEY: ip})
