@@ -27,7 +27,9 @@ handlers: Dict[
 ] = {}
 
 
-def header_data(command_name: str, function: str, dataset: Dict[str, Any]) -> str:
+def header_data(
+    command_name: str, function: str, dataset: Dict[str, Any]
+) -> Dict[str, Any]:
     """Create a header string from the command name, function name, and dataset."""
     return {
         "command_name": command_name,
@@ -52,22 +54,27 @@ def _load_data(
     data: Dict[str, Any], dataset: Dict[str, Callable[[Any], bool]]
 ) -> Dict[str, Any]:
     """Load and validate the data from the message into a dictionary."""
-    validated_errors = [k for k, v in dataset.items() if not v(data.get(k))]
-    if validated_errors:
-        raise ValueError(f"Invalid data: {validated_errors}")
 
     result = {}
+    validated_errors = []
     for key, value_type in dataset.items():
         value = data.get(key)
-        if value is None:
+        is_optional = value_type._name is "Optional"
+        if value is None and not is_optional:
             raise ValueError(f"Missing required key: {key}")
+        elif is_optional:
+            result[key] = None
+            continue
         try:
             if isinstance(value, dict):
                 result[key] = value_type(**value)
             else:
                 result[key] = value_type(value)
         except Exception as e:
-            raise ValueError(f"Error processing key '{key}': {e}")
+            validated_errors.append(ValueError(f"Error processing key '{key}': {e}"))
+
+    if validated_errors:
+        raise ValueError(f"Invalid data: {validated_errors}")
 
     return result
 

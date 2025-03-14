@@ -100,7 +100,7 @@ class ChordReference:
         self._send_chord_message(CHORD_DATA.SET_CHORD_REFERENCE, data)
         logging.info(f"Chord reference for {property} set to ip: {ip}")
 
-    def _get_replication(self, key: str, ls_time: Optional[datetime]) -> None:
+    def _get_replication(self, key: str, ls_time: Optional[datetime]) -> Dict[str, Any]:
         logging.info("Getting replication reference")
         data = {"key": key, "ls_time": ls_time}
         response = self._send_chord_message(CHORD_DATA.GET_REPLICATION, data)
@@ -168,7 +168,7 @@ class ChordReference:
         self, chord_data: CHORD_DATA, data: Dict[str, Any] = {}
     ) -> Dict[str, Any]:
         logging.info(f"Sending chord message with data: {data}")
-        header = header_data(**CHORD_DATA_COMMANDS[chord_data])
+        header = CHORD_DATA_COMMANDS[chord_data]
         response = self._socket_call(header, data)
         logging.info(f"Chord message sent with response: {response}")
         return response or {}
@@ -181,3 +181,16 @@ class ChordReference:
         return response.get("message") == "Pong"
 
     # endregion
+
+
+def replication(
+    dest: ChordReference,
+    orig: ChordReference,
+    key_dest: Optional[str],
+    key_orig: Optional[str] = None,
+    last_timestamp: Optional[datetime] = None,
+) -> None:
+    logging.info(f"Replication from {orig.ip} to {dest.ip}")
+    data = orig.get_replication(key_orig, last_timestamp)
+    if data:
+        dest.set_replication(key_dest, data)

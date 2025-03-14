@@ -1,5 +1,4 @@
-from typing import Any, Dict, List, Optional, Type
-from dotenv import load_dotenv
+from typing import List, Optional, Type
 
 import os
 
@@ -10,7 +9,7 @@ from .dtos import *
 from .services import *
 from .business_data import *
 
-__all__ = ["ServerService", "set_config"]
+__all__ = ["ServerService"]
 
 
 class ServerService:

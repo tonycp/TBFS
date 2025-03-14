@@ -24,6 +24,7 @@ if __name__ == "__main__":
     config = Configurable({HOST_KEY: ip})
     server = ChordLeader(config)
     set_chord_server(server)
+
     try:
         logging.info(f"Starting the server in {ip}...")
         server.run()

@@ -7,7 +7,7 @@ from .dtos import FileInputDto
 from .business_services import ServerService
 from .handlers import *
 
-_server_service = ServerService()
+_server_service: ServerService = None
 
 
 @Create({"file": FileInputDto, "tags": list})
@@ -74,3 +74,9 @@ def get_user_id(user_name: str) -> int:
     except Exception as e:
         logging.error(f"Error getting user ID: {e}")
         return str(e)
+
+
+def set_server_service(server_service: ServerService) -> None:
+    """Set the configuration for the server."""
+    global _server_service
+    _server_service = server_service

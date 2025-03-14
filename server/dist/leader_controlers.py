@@ -59,6 +59,6 @@ def ok_call(id: int, ip: str) -> None:
 
 def set_chord_server(chord_server: ChordLeader) -> None:
     """Set the configuration for the server."""
-    global _chord_server, _leader_service
+    global _chord_server
     _chord_server = chord_server
     set_chord_node(_chord_server)

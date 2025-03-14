@@ -173,7 +173,7 @@ class FileClient:
         self, server_ip, chord_data: int, data: str
     ) -> Dict[str, Any]:
         logging.info(f"Sending chord message with data: {data}")
-        header = header_data(**_commands[chord_data])
+        header = _commands[chord_data]
         response = self._socket_call(server_ip, header, data)
         logging.info(f"Chord message sent with response: {response}")
         return response

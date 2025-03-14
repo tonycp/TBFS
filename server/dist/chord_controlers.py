@@ -7,8 +7,8 @@ from data.const import *
 from logic.dtos import *
 from logic.handlers import *
 from logic import controlers
+from logic.business_services import ServerService
 
-from .utils import replication
 from .chord import ChordNode
 from .chord_service import ChordService
 from .chord_reference import ChordReference
@@ -216,3 +216,5 @@ def set_chord_node(chord_node: ChordNode) -> None:
     global _chord_node, _chord_service
     _chord_node = chord_node
     _chord_service = ChordService(_chord_node, _chord_node._config)
+    _server_service = ServerService(_chord_node._config)
+    controlers.set_server_service(_server_service)

@@ -38,7 +38,7 @@ class Server:
         self,
         header: Tuple[str, str, List[str]],
         data: Dict[str, Any],
-        addr: Tuple[str, int],
+        addr: Optional[Tuple[str, int]] = None,
     ) -> str:
         """Solve the request and return the result."""
         return handle_request(header, data)

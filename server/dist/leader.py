@@ -12,7 +12,6 @@ from data.const import *
 
 from .chord import ChordNode
 from .chord_reference import ChordReference
-from utils import join_nodes
 
 __all__ = ["ChordLeader"]
 
@@ -24,7 +23,8 @@ class ChordLeader(LeaderReference, ChordNode, Server):
 
     def __init__(self, config: Optional[Configurable] = None):
         config = config or Configurable()
-        super().__init__(config)
+        LeaderReference.__init__(self, config)
+        ChordNode.__init__(self, config)
         self._subscribe_read_udp_port(DEFAULT_ELECTION_PORT)
 
         self.leader: ChordReference = self
@@ -165,7 +165,7 @@ class ChordLeader(LeaderReference, ChordNode, Server):
     ) -> None:
         """Send an election message to the specified port."""
         logging.info(f"Sending election message: {elect.name}")
-        header = header_data(**ELECTION_COMMANDS[elect])
+        header = ELECTION_COMMANDS[elect]
         message = json.dumps({"header": header, "data": data})
         self.send_multicast_notification(port, message)
 
@@ -266,3 +266,16 @@ class ChordLeader(LeaderReference, ChordNode, Server):
         threading.Thread(target=self._multicast_server, daemon=True).start()
         threading.Thread(target=self._election_loop, daemon=True).start()
         ChordNode.run(self)
+
+
+async def join_nodes(
+    node: Optional[ChordReference], nodes: List[Optional[ChordReference]]
+) -> None:
+    async def join_async(internal: Optional[ChordReference], sucs):
+        await asyncio.to_thread(internal.join(sucs))
+
+    task = []
+    for internal in nodes:
+        sucs = node.get_sucs(internal.id)
+        task.append(join_async(internal, sucs))
+    await asyncio.gather(*task)

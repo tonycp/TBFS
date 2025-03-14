@@ -124,12 +124,12 @@ CHORD_DATA_COMMANDS = {
         "dataset": ["func_name", "node"],
     },
     CHORD_DATA.GET_REPLICATION: {
-        "command_name": "GetAll",
+        "command_name": "Chord",
         "function": "get_replication",
         "dataset": ["key", "last_timestamp"],
     },
     CHORD_DATA.SET_REPLICATION: {
-        "command_name": "Update",
+        "command_name": "Chord",
         "function": "update_replication",
         "dataset": ["key", "data"],
     },

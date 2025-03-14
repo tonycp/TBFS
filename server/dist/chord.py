@@ -1,4 +1,6 @@
 from __future__ import annotations
+from datetime import datetime
+import json
 from typing import Any, Dict, List, Optional
 
 import threading, asyncio
@@ -11,8 +13,8 @@ from logic.handlers import *
 from data.const import *
 from servers.server import Server
 
-from .chord_reference import ChordReference
-from .utils import in_between, replication
+from .chord_reference import ChordReference, replication
+from .utils import in_between
 
 __all__ = ["ChordNode"]
 
@@ -26,8 +28,8 @@ class ChordNode(ChordReference, Server):
         ChordReference.__init__(self, config)
 
         self.leader: Optional[ChordReference] = self
-        self.sucs: Optional[ChordReference] = self
-        self.pred: Optional[ChordReference] = self
+        self._successor: Optional[ChordReference] = self
+        self._predecessor: Optional[ChordReference] = self
         self.finger_table: List[Optional[ChordReference]] = [self] * SHA_1
 
         Server.__init__(self, config)
@@ -101,6 +103,19 @@ class ChordNode(ChordReference, Server):
         return Server._solver_request(self, header, data, addr)
 
     # endregion
+
+    def get_replication(self, key: str, ls_time: Optional[datetime]) -> Dict[str, Any]:
+        logging.info("Getting replication reference")
+        header = parse_header(CHORD_DATA_COMMANDS[CHORD_DATA.GET_REPLICATION])
+        value = Server._solver_request(self, header, {"key": key, "ls_time": ls_time})
+        logging.info(f"Getting replication complete")
+        return json.load(value) if value else None
+
+    def set_replication(self, key: str, data: Dict[str, Any]) -> None:
+        logging.info("Setting replication reference")
+        header = parse_header(CHORD_DATA_COMMANDS[CHORD_DATA.SET_REPLICATION])
+        Server._solver_request(self, header, {"key": key, "data": data})
+        logging.info(f"Setting replication complete")
 
     # region Findings Methods
     def _get_other_sucs(self):

@@ -5,8 +5,8 @@ from datetime import datetime
 
 from data.const import *
 from logic.configurable import Configurable
-from server.dist.chord import ChordNode
-from server.dist.utils import replication
+from dist.chord import ChordNode
+from dist.chord_reference import replication
 
 
 __all__ = ["ChordService"]
