@@ -7,9 +7,10 @@ from logic.handlers import *
 from logic.dtos.FileDto import *
 
 from .leader import ChordLeader
-from .chord_reference import ChordReference, bully
+from .chord_reference import ChordReference
 from .chord_controlers import set_chord_node
 from .leader_service import LeaderService
+from .utils import bully
 
 _chord_server: Optional[ChordLeader] = None
 _leader_service: LeaderService = None

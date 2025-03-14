@@ -1,4 +1,5 @@
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 import logging
 
@@ -6,9 +7,11 @@ from data.const import *
 from logic.handlers import Chord
 
 from .chord import ChordNode
+from .chord_service import ChordService
 from .chord_reference import ChordReference
 
 _chord_node: Optional[ChordNode] = None
+_chord_service: Optional[ChordService] = None
 
 
 @Chord({"property": str})
@@ -61,13 +64,13 @@ def set_property_call(property: str, value: Any) -> Dict[str, Any]:
     return {"message": "Property set"}
 
 
-@Chord({"function_name": str, "key": int})
-def finding_call(function_name: str, key: int) -> Dict[str, Any]:
-    logging.info(f"Finding message received for {function_name}, by id: {key}")
+@Chord({"func_name": str, "key": int})
+def finding_call(func_name: str, key: int) -> Dict[str, Any]:
+    logging.info(f"Finding message received for {func_name}, by id: {key}")
 
     result = None
-    if hasattr(_chord_node, function_name):
-        func = getattr(_chord_node, function_name)
+    if hasattr(_chord_node, func_name):
+        func = getattr(_chord_node, func_name)
         if callable(func):
             result: ChordNode = func(key)
             ip = result.ip if result else None
@@ -78,15 +81,15 @@ def finding_call(function_name: str, key: int) -> Dict[str, Any]:
     }
 
 
-@Chord({"function_name": str, "node": str})
-def notify_call(function_name: str, node: str) -> Dict[str, Any]:
-    logging.info(f"Notify message received for {function_name}, by ip: {node}")
+@Chord({"func_name": str, "node": str})
+def notify_call(func_name: str, node: str) -> Dict[str, Any]:
+    logging.info(f"Notify message received for {func_name}, by ip: {node}")
     updated_config = _chord_node._config.copy_with_updates({HOST_KEY: node})
     ref = ChordReference(updated_config)
 
     result = None
-    if hasattr(_chord_node, function_name):
-        func = getattr(_chord_node, function_name)
+    if hasattr(_chord_node, func_name):
+        func = getattr(_chord_node, func_name)
         if callable(func):
             result = func(ref)
 
@@ -103,7 +106,29 @@ def pon_call(message: str) -> Dict[str, Any]:
     return {"message": "Pong"}
 
 
+@Chord({"last_timestamp": Optional[datetime]})
+def get_replication(
+    last_timestamp: Optional[datetime],
+) -> Dict[str, List[Dict[str, Any]]]:
+    _chord_service.change_engine()
+    result = _chord_service.get_all_records(last_timestamp)
+    return {
+        "message": "Replication data retrieved",
+        "data": result,
+    }
+
+
+@Chord({"key": str, "data": Dict[str, List[Dict[str, Any]]]})
+def update_replication(key: str, data: Dict[str, List[Dict[str, Any]]]):
+    logging.info(f"Updating replication data for key: {key}")
+    db_url = _chord_service._config[DB_BASE_URL_KEY] + key
+    _chord_service.change_engine(db_url)
+    _chord_service.set_all_records(data)
+    return {"message": "Replication data updated"}
+
+
 def set_chord_node(chord_node: ChordNode) -> None:
     """Set the configuration for the server."""
-    global _chord_node
+    global _chord_node, _chord_service
     _chord_node = chord_node
+    _chord_service = ChordService(_chord_node._config)

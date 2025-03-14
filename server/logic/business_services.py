@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 
 from data import *
+from logic.configurable import Configurable
 
 from .dtos import *
 from .services import *
@@ -11,17 +12,18 @@ from .business_data import *
 
 __all__ = ["ServerService", "set_config"]
 
-_service_config = {}
-
 
 class ServerService:
-    def __init__(self):
-        _check_default(_service_config)
-        get_service = _instance_service
+    def __init__(self, config: Optional[Configurable]):
+        self._config = config or Configurable()
+        get_service = self._instance_service
         self.Files: FileService = get_service(FileService, File)
         self.Users: UserService = get_service(UserService, User)
         self.Tags: TagService = get_service(TagService, Tag)
         self.FileSources: FileSourceService = get_service(FileSourceService, FileSource)
+
+    def _instance_service(self, service, model: Type[ModelType]):
+        return service(get_repository(model, self._config[DB_URL_KEY]))
 
     def get_user_id(self, name: str) -> int:
         user = self.Users.get(UserInputDto(name, None, None, None))
@@ -77,9 +79,8 @@ class ServerService:
             self._delete_tags(file.id, tags)
 
     def copy_file(self, file: FileInputDto, file_id: int) -> FileSourceInputDto:
-        dest_path = os.path.join(
-            _service_config["content_path"], f"{file.name}.{file.file_type}"
-        )
+        file_name = f"{file.name}.{file.file_type}"
+        dest_path = os.path.join(self._config[CONTENT_PATH_KEY], file_name)
         file_loader = file.content
         with open(dest_path, "wb") as f:
             f.write(file_loader)
@@ -95,28 +96,3 @@ class ServerService:
     def _delete_tags(self, file_id: int, tag_list: List[str]):
         tag_ids = self.get_tags_id(tag_list)
         self.Tags.delete_tags(file_id, tag_ids)
-
-
-def _instance_service(service, model: Type[ModelType]):
-    return service(get_repository(model, _service_config["database"]))
-
-
-def _check_default(config: Dict[str, Optional[Any]]):
-    """Check and set default values for the configuration."""
-    load_dotenv()
-    default_config = {
-        "database": os.getenv(
-            "DATABASE_URL", "postgresql://postgres:ranvedi@localhost/SDDB"
-        ),
-        "content_path": os.getenv("CONTENT_PATH", "content"),
-    }
-
-    for key, value in default_config.items():
-        config.setdefault(key, value)
-    return config
-
-
-def set_config(config: Dict[str, Optional[Any]]) -> None:
-    """Set the configuration for the server."""
-    global _service_config
-    _service_config.update(config)

@@ -53,7 +53,6 @@ class FileService:
         try:
             result = self.repository.create(file, FileOutputDto._to_dto)
             logging.info(f"File created: {result}")
-            self.replicate_file(file)
             return result
         except SQLAlchemyError as e:
             logging.error(f"Error creating file: {e}")
@@ -76,7 +75,6 @@ class FileService:
             self.repository.update(file)
             result = FileOutputDto._to_dto(file)
             logging.info(f"File updated: {result}")
-            self.replicate_file(file)
             return result
         except SQLAlchemyError as e:
             logging.error(f"Error updating file: {e}")
@@ -90,18 +88,5 @@ class FileService:
             try:
                 self.repository.delete(file)
                 logging.info(f"File deleted: {id}")
-                self.remove_replication(file)
             except SQLAlchemyError as e:
                 logging.error(f"Error deleting file: {e}")
-
-    def replicate_file(self, file: File) -> None:
-        """Replicate the file to other nodes."""
-        logging.info(f"Replicating file: {file}")
-        # Implement replication logic here
-        pass
-
-    def remove_replication(self, file: File) -> None:
-        """Remove the file replication from other nodes."""
-        logging.info(f"Removing replication for file: {file}")
-        # Implement replication removal logic here
-        pass

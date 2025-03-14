@@ -7,10 +7,10 @@ from sqlalchemy import create_engine, MetaData
 load_dotenv()
 
 # Leer la URL de la base de datos desde el archivo .env
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///mydatabase.db')
+DB_URL = os.getenv("DB_URL", "sqlite:///mydatabase.db")
 
 # Crear el motor de la base de datos
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DB_URL)
 
 # Crear todas las tablas (asumiendo que ya tienes modelos definidos)
 metadata = MetaData()

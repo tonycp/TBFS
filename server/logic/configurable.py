@@ -16,19 +16,23 @@ class Configurable:
 
     @staticmethod
     def _check_default(
-        config: Dict[str, Optional[Union[str, int]]]
+        config: Dict[str, Optional[Union[str, int]]],
     ) -> Dict[str, Optional[Union[str, int]]]:
         """Check and set default values for the configuration."""
         load_dotenv()
-        default_config: Dict[str, Optional[Union[str, int]]] = {
+        default: Dict[str, Optional[Union[str, int]]] = {
             PROTOCOL_KEY: os.getenv(PROTOCOL_ENV_KEY, DEFAULT_PROTOCOL),
             HOST_KEY: os.getenv(HOST_ENV_KEY, DEFAULT_HOST),
             PORT_KEY: int(os.getenv(PORT_ENV_KEY, DEFAULT_DATA_PORT)),
             NODE_PORT_KEY: int(os.getenv(NODE_PORT_ENV_KEY, DEFAULT_NODE_PORT)),
             MCAST_ADDR_KEY: os.getenv(MCAST_ADDR_ENV_KEY, DEFAULT_MCAST_ADDR),
+            DB_BASE_URL_KEY: os.getenv(DB_BASE_URL_ENV_KEY, DEFAULT_DB_BASE_URL),
+            DB_NAME_KEY: os.getenv(DB_NAME_ENV_KEY, DEFAULT_DB_NAME),
+            CONTENT_PATH_KEY: os.getenv(CONTENT_PATH_ENV_KEY, DEFAULT_CONTENT_PATH),
         }
+        default[DB_URL_KEY] = default[DB_BASE_URL_KEY] + default[DB_NAME_KEY]
 
-        for key, value in default_config.items():
+        for key, value in default.items():
             config.setdefault(key, value)
         return config
 

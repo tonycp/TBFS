@@ -9,6 +9,10 @@ HOST_KEY = "host"
 PORT_KEY = "port"
 NODE_PORT_KEY = "chord_port"
 MCAST_ADDR_KEY = "mcast_addr"
+DB_URL_KEY = "database_url"
+DB_BASE_URL_KEY = "db_base_url"
+DB_NAME_KEY = "db_name"
+CONTENT_PATH_KEY = "content_path"
 
 # Environment variable keys
 PROTOCOL_ENV_KEY = "PROTOCOL"
@@ -16,6 +20,10 @@ HOST_ENV_KEY = "HOST"
 PORT_ENV_KEY = "PORT"
 NODE_PORT_ENV_KEY = "CHORD_PORT"
 MCAST_ADDR_ENV_KEY = "MCAST_ADDR"
+DB_BASE_URL_ENV_KEY = "DB_BASE_URL"
+DB_NAME_ENV_KEY = "DB_NAME"
+CONTENT_PATH_ENV_KEY = "CONTENT_PATH"
+
 
 # Default values
 DEFAULT_PROTOCOL = "tcp"
@@ -25,6 +33,9 @@ DEFAULT_NODE_PORT = 10001
 DEFAULT_ELECTION_PORT = 10002
 DEFAULT_BROADCAST_PORT = 10003
 DEFAULT_MCAST_ADDR = "224.0.0.1"
+DEFAULT_DB_BASE_URL = "sqlite:///"
+DEFAULT_DB_NAME = "original.db"
+DEFAULT_CONTENT_PATH = "content"
 
 # Chord constants
 SHA_1 = 160
@@ -69,10 +80,11 @@ class CHORD_DATA(Enum):
     SET_PROPERTY = 2
     GET_CHORD_REFERENCE = 1
     SET_CHORD_REFERENCE = 2
-    FIND_CALL = 3
-    NOTIFY_CALL = 4
-    PON_CALL = 5
-    JOIN_CALL = 6
+    PON_CALL = 3
+    FIND_CALL = 4
+    NOTIFY_CALL = 5
+    GET_REPLICATION = 6
+    SET_REPLICATION = 7
 
 
 CHORD_DATA_COMMANDS = {
@@ -96,19 +108,29 @@ CHORD_DATA_COMMANDS = {
         "function": "set_chord_reference_call",
         "dataset": ["property", "ip"],
     },
-    CHORD_DATA.FIND_CALL: {
-        "command_name": "Chord",
-        "function": "finding_call",
-        "dataset": ["function_name", "key"],
-    },
-    CHORD_DATA.NOTIFY_CALL: {
-        "command_name": "Chord",
-        "function": "notify_call",
-        "dataset": ["function_name", "node"],
-    },
     CHORD_DATA.PON_CALL: {
         "command_name": "Chord",
         "function": "pon_call",
         "dataset": ["message"],
+    },
+    CHORD_DATA.FIND_CALL: {
+        "command_name": "Chord",
+        "function": "finding_call",
+        "dataset": ["func_name", "key"],
+    },
+    CHORD_DATA.NOTIFY_CALL: {
+        "command_name": "Chord",
+        "function": "notify_call",
+        "dataset": ["func_name", "node"],
+    },
+    CHORD_DATA.GET_REPLICATION: {
+        "command_name": "GetAll",
+        "function": "get_replication",
+        "dataset": [],
+    },
+    CHORD_DATA.SET_REPLICATION: {
+        "command_name": "Update",
+        "function": "update_replication",
+        "dataset": ["key", "data"],
     },
 }

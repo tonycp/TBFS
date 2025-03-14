@@ -9,6 +9,7 @@ from data.const import MAX_ITERATIONS
 
 from .chord_reference import ChordReference
 from .leader import ChordLeader
+from .utils import hash_sha1_key
 
 __all__ = ["LeaderService"]
 
@@ -26,7 +27,7 @@ class LeaderService(ServerService):
         iterations = MAX_ITERATIONS
         try:
             node = self.chord_server
-            id = ChordReference._hash_key(key)
+            id = hash_sha1_key(key)
             while len(successors) < num_successors and iterations > 0:
                 if node not in successors:
                     successors.append(node)
