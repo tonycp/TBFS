@@ -9,11 +9,9 @@ from logic.dtos.FileDto import *
 from .leader import ChordLeader
 from .chord_reference import ChordReference
 from .chord_controlers import set_chord_node
-from .leader_service import LeaderService
 from .utils import bully
 
 _chord_server: Optional[ChordLeader] = None
-_leader_service: LeaderService = None
 
 
 @Election({"id": int, "ip": str})
@@ -59,96 +57,8 @@ def ok_call(id: int, ip: str) -> None:
     return {"message": "Ok"}
 
 
-@LiderCreate({"file": FileInputDto, "tags": list, "header": Tuple[str, str, List[str]]})
-def lider_add(
-    file: FileInputDto,
-    tags: List[str],
-    header: Tuple[str, str, List[str]],
-) -> str:
-    try:
-        logging.info(f"Lider adding file with tags: {tags}")
-        result = _leader_service.create_update_file(header, file, tags)
-        return str(result)
-    except Exception as e:
-        logging.error(f"Error lider adding file: {e}")
-        return str(e)
-
-
-@LiderDelete({"tag_query": list, "header": Tuple[str, str, List[str]]})
-def lider_delete(
-    tag_query: List[str],
-    header: Tuple[str, str, List[str]],
-) -> str:
-    try:
-        logging.info(f"Lider deleting files with tags: {tag_query}")
-        _leader_service.delete_file_by_tags(header, tag_query)
-        return "Files deleted"
-    except Exception as e:
-        logging.error(f"Error lider deleting files: {e}")
-        return str(e)
-
-
-@LiderGetAll({"tag_query": list, "header": Tuple[str, str, List[str]]})
-def lider_list_files(
-    tag_query: List[str],
-    header: Tuple[str, str, List[str]],
-) -> list[str]:
-    try:
-        logging.info(f"Lider listing files with tags: {tag_query}")
-        files = _leader_service.get_files_by_tags(header, tag_query)
-        return [str(file) for file in files]
-    except Exception as e:
-        logging.error(f"Error lider listing files: {e}")
-        return str(e)
-
-
-@LiderCreate({"tag_query": list, "tags": list, "header": Tuple[str, str, List[str]]})
-def lider_add_tags(
-    tag_query: List[str],
-    tags: List[str],
-    header: Tuple[str, str, List[str]],
-) -> str:
-    try:
-        logging.info(f"Lider adding tags: {tags} to files with tags: {tag_query}")
-        _leader_service.add_tags_to_files(header, tag_query, tags)
-        return "Tags added"
-    except Exception as e:
-        logging.error(f"Error lider adding tags: {e}")
-        return str(e)
-
-
-@LiderDelete({"tag_query": list, "tags": list, "header": Tuple[str, str, List[str]]})
-def lider_delete_tags(
-    tag_query: List[str],
-    tags: List[str],
-    header: Tuple[str, str, List[str]],
-) -> str:
-    try:
-        logging.info(f"Lider deleting tags: {tags} from files with tags: {tag_query}")
-        _leader_service.delete_tags_from_files(header, tag_query, tags)
-        return "Tags deleted"
-    except Exception as e:
-        logging.error(f"Error lider deleting tags: {e}")
-        return str(e)
-
-
-@LiderGet({"user_name": str, "header": Tuple[str, str, List[str]]})
-def lider_get_user_id(
-    user_name: str,
-    header: Tuple[str, str, List[str]],
-) -> int:
-    try:
-        logging.info(f"Lider getting user ID for user: {user_name}")
-        result = _leader_service.get_user_id(header, user_name)
-        return result
-    except Exception as e:
-        logging.error(f"Error lider getting user ID: {e}")
-        return str(e)
-
-
 def set_chord_server(chord_server: ChordLeader) -> None:
     """Set the configuration for the server."""
     global _chord_server, _leader_service
     _chord_server = chord_server
-    _leader_service = LeaderService(chord_server)
     set_chord_node(_chord_server)

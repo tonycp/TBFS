@@ -5,13 +5,16 @@ from datetime import datetime
 
 from data.const import *
 from logic.configurable import Configurable
+from server.dist.chord import ChordNode
+from server.dist.utils import replication
 
 
 __all__ = ["ChordService"]
 
 
 class ChordService:
-    def __init__(self, config: Optional[Configurable]):
+    def __init__(self, _chord_node: ChordNode, config: Optional[Configurable]):
+        self._chord_node = _chord_node
         self._config = config or Configurable()
         self.change_engine()
 
@@ -60,7 +63,11 @@ class ChordService:
         table = metadata.tables.get(table_name)
         if table:
             with self.engine.connect() as conn:
-                conn.execute(table.insert(), record)
+                query = select(table).where(table.c.id == record["id"])
+                if not conn.execute(query.exists()):
+                    conn.execute(table.insert(), record)
+                elif query.c.last_modified < record["last_modified"]:
+                    conn.execute(table.update(), record)
 
     def set_records_by_table(
         self,
@@ -80,3 +87,8 @@ class ChordService:
         metadata = metadata or MetaData()
         for table_name, records in tables_records.items():
             self.set_records_by_table(table_name, records, metadata)
+
+    def replication(self, last_timestamp: Optional[datetime] = None):
+        replics = self._chord_node.get_replications()
+        for dest, name in replics:
+            replication(dest, self._chord_node, name, last_timestamp=last_timestamp)

@@ -126,7 +126,7 @@ CHORD_DATA_COMMANDS = {
     CHORD_DATA.GET_REPLICATION: {
         "command_name": "GetAll",
         "function": "get_replication",
-        "dataset": [],
+        "dataset": ["key", "last_timestamp"],
     },
     CHORD_DATA.SET_REPLICATION: {
         "command_name": "Update",

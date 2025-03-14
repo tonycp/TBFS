@@ -5,18 +5,19 @@ import json, logging, time
 import selectors, socket, threading
 
 from logic.configurable import Configurable
+from .leader_reference import LeaderReference
 from servers.server import Server
 from logic.handlers import *
 from data.const import *
 
 from .chord import ChordNode
-from .chord_reference import ChordReference, LiderReference
+from .chord_reference import ChordReference
 from utils import join_nodes
 
 __all__ = ["ChordLeader"]
 
 
-class ChordLeader(LiderReference, ChordNode, Server):
+class ChordLeader(LeaderReference, ChordNode, Server):
     _leader: Optional[ChordReference]
     _im_the_leader: bool
     _in_election: bool
@@ -58,12 +59,6 @@ class ChordLeader(LiderReference, ChordNode, Server):
     # endregion
 
     # region Server Methods
-    def _is_node_request(self, addr: Tuple[str, int]) -> bool:
-        """Check if the request is from a node based on the port."""
-        node_port = self._config[NODE_PORT_KEY]
-        election_port = DEFAULT_ELECTION_PORT
-        return addr[1] == node_port or addr[1] == election_port
-
     def _is_leader_request(self, addr: Tuple[str, int]) -> bool:
         """Check if the request is from the leader based on the endpoint."""
         return self.leader and addr[0] == self.leader.ip
@@ -111,47 +106,6 @@ class ChordLeader(LiderReference, ChordNode, Server):
 
     # endregion
 
-    # region Server TCP
-    def _process_mesage(self, message: bytes, addr: Tuple[str, int]) -> None:
-        is_node_req = self._is_node_request(addr)
-        while not is_node_req and (self.in_election or not self.leader):
-            logging.warning("Waiting for new leader...")
-            time.sleep(WAIT_CHECK * START_MOD)
-        return Server._process_mesage(self, message, addr)
-
-    def _solver_request(
-        self,
-        header: Tuple[str, str, List[str]],
-        data: Dict[str, Any],
-        addr: Tuple[str, int],
-    ) -> str:
-        """Solve the request and return the result."""
-        is_leader_req = self._is_leader_request(addr)
-        is_node_req = self._is_node_request(addr)
-
-        if is_leader_req or is_node_req:
-            logging.info("Handling the request as a node...")
-            return Server._solver_request(self, header, data, addr)
-        elif not self.im_the_leader:
-            logging.info("Forwarding the request to the leader...")
-            node, port = self.leader, self.data_port
-            return self.send_request_message(node, header, data, port)
-        logging.info("Handling the request as leader...")
-        return self._handle_leader_request(header, data, addr)
-
-    def _handle_leader_request(
-        self,
-        header: Tuple[str, str, List[str]],
-        data: Dict[str, Any],
-        addr: Tuple[str, int],
-    ) -> str:
-        """Handle the request as the leader and aggregate responses from other nodes."""
-        data["header"] = header
-        header[1] = handle_leader_conversion(header[1])
-        return Server._solver_request(self, header, data, addr)
-
-    # endregion
-
     # region Chord Methods
     def adopt_leader(self, node: Optional[ChordReference] = None) -> None:
         logging.info(f"Adopting leader: {node.ip if node else 'self'}")
@@ -159,7 +113,7 @@ class ChordLeader(LiderReference, ChordNode, Server):
         self.im_the_leader = node is self
         logging.info(f"Leader adopted: {node or self}, I am the leader: {node is self}")
 
-    def join(self, node: Optional[LiderReference] = None) -> None:
+    def join(self, node: Optional[LeaderReference] = None) -> None:
         """Join the network and adopt the leader."""
         if self.im_the_leader:
             nodes = [n for n in self.finger_table if n and n.id != self]

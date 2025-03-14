@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import threading, asyncio
 import time, logging
+
+from sqlalchemy import Tuple
 
 from logic.configurable import Configurable
 from logic.handlers import *
@@ -10,7 +12,7 @@ from data.const import *
 from servers.server import Server
 
 from .chord_reference import ChordReference
-from .utils import in_between
+from .utils import in_between, replication
 
 __all__ = ["ChordNode"]
 
@@ -47,11 +49,56 @@ class ChordNode(ChordReference, Server):
     @sucs.setter
     def sucs(self, node: ChordReference):
         self._successor = node
+        replication(self, node, "sucs.db")
 
     @pred.setter
     def pred(self, node: ChordReference):
         self._predecessor = node
-        self.replication(node, "pred.db")
+        replication(self, node, "pred.db")
+
+    # endregion
+
+    # region Server Methods
+    def _is_node_request(self, addr: Tuple[str, int]) -> bool:
+        """Check if the request is from a node based on the port."""
+        node_port = self._config[NODE_PORT_KEY]
+        election_port = DEFAULT_ELECTION_PORT
+        return addr[1] == node_port or addr[1] == election_port
+
+    # endregion
+
+    # region Server TCP
+    def _process_mesage(self, message: bytes, addr: Tuple[str, int]) -> None:
+        is_node_req = self._is_node_request(addr)
+        while not is_node_req and (self.in_election or not self.leader):
+            logging.warning("Waiting for new leader...")
+            time.sleep(WAIT_CHECK * START_MOD)
+        return Server._process_mesage(self, message, addr)
+
+    def _solver_request(
+        self,
+        header: Tuple[str, str, List[str]],
+        data: Dict[str, Any],
+        addr: Tuple[str, int],
+    ) -> str:
+        """Solve the request and return the result."""
+        is_node_req = self._is_node_request(addr)
+
+        if is_node_req:
+            logging.info("Handling the request as a node...")
+            return Server._solver_request(self, header, data, addr)
+        logging.info("Handling the request as leader...")
+        return self._handle_leader_request(header, data, addr)
+
+    def _handle_leader_request(
+        self,
+        header: Tuple[str, str, List[str]],
+        data: Dict[str, Any],
+        addr: Tuple[str, int],
+    ) -> str:
+        """Handle the request as the leader and aggregate responses from other nodes."""
+        header[1] = handle_chord_conversion(header[1])
+        return Server._solver_request(self, header, data, addr)
 
     # endregion
 
@@ -108,11 +155,6 @@ class ChordNode(ChordReference, Server):
 
         logging.info(f"Node {self.ip} joined the network")
 
-    def replication(self, node: ChordReference, key: str) -> None:
-        logging.info(f"Sending replication to {node.ip}")
-        data = self.get_replication()
-        node.set_replication(key, data)
-
     # endregion
 
     # region Threading Methods
@@ -134,7 +176,6 @@ class ChordNode(ChordReference, Server):
             if node:
                 logging.info(f"Changing successor to {node.ip}")
                 self.sucs = node
-                self.replication(node, "sucs.db")
                 node.pred = self
             else:
                 logging.info("I am alone...")

@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Optional, Dict, Any
+from datetime import datetime
+from typing import List, Optional, Dict, Any, Tuple
 
 import socket, json, logging
 
@@ -99,9 +100,10 @@ class ChordReference:
         self._send_chord_message(CHORD_DATA.SET_CHORD_REFERENCE, data)
         logging.info(f"Chord reference for {property} set to ip: {ip}")
 
-    def _get_replication(self) -> None:
+    def _get_replication(self, key: str, ls_time: Optional[datetime]) -> None:
         logging.info("Getting replication reference")
-        response = self._send_chord_message(CHORD_DATA.GET_REPLICATION)
+        data = {"key": key, "ls_time": ls_time}
+        response = self._send_chord_message(CHORD_DATA.GET_REPLICATION, data)
         value = response.get("value")
         logging.info(f"Getting replication complete")
         return value
@@ -120,14 +122,17 @@ class ChordReference:
     def get_sucs(self, key: int) -> ChordReference:
         return self._call_finding_methods("get_sucs", key)
 
-    def get_replication(self) -> Dict[str, Any]:
-        return self._get_replication()
+    def get_replication(self, key: str, ls_time: Optional[datetime]) -> Dict[str, Any]:
+        return self._get_replication(key, ls_time)
 
     def set_replication(self, key: str, data: Dict[str, Any]) -> None:
         self._set_replication(key, data)
 
     def join(self, node: Optional[ChordReference] = None) -> None:
         self._call_notify_methods("join", node)
+
+    def get_replications(self) -> List[Tuple[ChordReference, str]]:
+        return [(self.sucs, "sucs"), (self.pred, "pred")]
 
     # endregion
 
@@ -174,43 +179,5 @@ class ChordReference:
         response = self._send_chord_message(CHORD_DATA.PON_CALL, data)
         logging.info("Ping message sent with response: Pong")
         return response.get("message") == "Pong"
-
-    # endregion
-
-
-class LiderReference(ChordReference):
-    def __init__(self, config: Configurable):
-        ChordReference.__init__(self, config)
-
-    # region Properties
-    @property
-    def leader(self) -> ChordReference:
-        return self._get_chord_reference("leader")
-
-    @property
-    def im_the_leader(self) -> bool:
-        return self._get_property("im_the_leader")
-
-    @property
-    def in_election(self) -> bool:
-        return self._get_property("in_election")
-
-    @leader.setter
-    def leader(self, node: ChordReference):
-        self._set_chord_reference("leader", node.id)
-
-    @im_the_leader.setter
-    def im_the_leader(self, value: bool):
-        self._set_property("im_the_leader", value)
-
-    @in_election.setter
-    def in_election(self, value: bool):
-        self._set_property("in_election", value)
-
-    # endregion
-
-    # region Chord Methods
-    def adopt_leader(self, node: Optional[ChordReference] = None) -> None:
-        self._call_notify_methods("adopt_leader", node)
 
     # endregion
